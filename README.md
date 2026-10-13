@@ -8,6 +8,7 @@ A sidebar pane that lists every web link (http/https URL) in the current note, t
 - Click a link to open its Semble view; Ctrl/Cmd-click opens it in your browser
 - Right-click to open the link, jump to it in the note, or copy the URL
 - A filter box to narrow down the list
+- With a Semble API key, each link shows how many people saved it on Semble, on the right like Outline's counts. Links in your library show the count in your accent colour with a checkmark. Links with no saves show nothing, and there's no loading state. Counts appear once the note has been unchanged for a second, so typing a URL doesn't look up every partial URL.
 
 ## Usage
 
@@ -117,7 +118,7 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 **Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
 
-**Caching.** GET responses are cached in memory for 5 minutes, keyed by method and query. Going back to the list and reopening a link renders from the cache without any loading state. The client caches the promise, not just the result, so identical requests that are already in flight are shared. Failed requests are never cached. Each mutation clears what it makes stale:
+**Caching.** GET responses are cached in memory for 5 minutes. The link list's save counts use the same request as the link view's header, so opening a link from the list is usually instant. `peekUrlInfo()` reads a cached result without making a request, which lets the list redraw as you type without flickering. Responses are keyed by method and query. Going back to the list and reopening a link renders from the cache without any loading state. The client caches the promise, not just the result, so identical requests that are already in flight are shared. Failed requests are never cached. Each mutation clears what it makes stale:
 
 - Adding, updating or removing a library card clears that URL's entries and the collection lists.
 - Creating a collection clears the collection lists.

@@ -159,7 +159,7 @@ export class LinkDetail extends Component {
 		siteEl.createSpan({ text: hostOf(link.url) ?? link.url });
 		if (info?.urlInLibrary) {
 			const savedEl = siteEl.createSpan({ cls: "semble-saved", attr: { "aria-label": "In your library" } });
-			setIcon(savedEl, "bookmark-check");
+			setIcon(savedEl, "check");
 			savedEl.createSpan({ text: "Saved" });
 		}
 		textEl.createDiv({ cls: "semble-detail-title", text: metadata?.title || link.displayText });

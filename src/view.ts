@@ -12,7 +12,8 @@ import {
 import { LinkDetail, type ViewId } from "./detail/LinkDetail";
 import { extractLinks, type WebLink } from "./links";
 import type SemblePlugin from "./main";
-import { openUrl, renderRow } from "./ui";
+import type { UrlInfo } from "./api";
+import { openUrl, plural, renderRow, setRowFlair } from "./ui";
 import { SEMBLE_ICON } from "./icon";
 import { hostOf } from "./urls";
 
@@ -28,6 +29,10 @@ export const VIEW_TYPE_LINKS = "semble-links";
 export class LinksView extends ItemView {
 	private file: TFile | null = null;
 	private links: WebLink[] = [];
+	/** Rendered rows by URL, so Semble stats can be added to them as they arrive. */
+	private readonly rowEls = new Map<string, HTMLElement[]>();
+	/** Incremented per stats load so results for an old list are dropped. */
+	private statsRun = 0;
 	private filter = "";
 	/** Incremented per refresh so a slow read can't overwrite a newer result. */
 	private refreshId = 0;
@@ -40,6 +45,11 @@ export class LinksView extends ItemView {
 	private detailView: ViewId = "library";
 
 	private readonly requestRefresh = debounce(() => void this.refresh(), 250, true);
+	/**
+	 * Looking up stats for links Semble hasn't been asked about waits until the
+	 * note settles, so typing a URL doesn't query every partial URL on the way.
+	 */
+	private readonly fetchStatsLater = debounce(() => void this.fetchStats(), 1000, true);
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -94,6 +104,7 @@ export class LinksView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.requestRefresh.cancel();
+		this.fetchStatsLater.cancel();
 	}
 
 	onSettingsChanged(): void {
@@ -149,6 +160,8 @@ export class LinksView extends ItemView {
 		this.detail = null;
 		this.detailEl.hide();
 		this.listViewEl.show();
+		// Saving in the link view invalidates that link's cached stats; refresh the counts.
+		this.showStats();
 	}
 
 	// --- List ---
@@ -157,6 +170,7 @@ export class LinksView extends ItemView {
 	render(): void {
 		if (!this.listEl) return;
 		this.listEl.empty();
+		this.rowEls.clear();
 
 		if (!this.file) return this.renderEmpty("No file is open.");
 		if (this.file.extension !== "md") return this.renderEmpty("Links are only listed for Markdown notes.");
@@ -166,6 +180,47 @@ export class LinksView extends ItemView {
 			return this.renderEmpty(this.filter ? "No links match the filter." : "No web links in this note.");
 		}
 		for (const link of links) this.renderItem(link);
+		this.showStats();
+	}
+
+	/**
+	 * Show each link's Semble save count in its row's flair. It's the same
+	 * cached request as the link view's header, so opening a link afterwards is
+	 * instant. Cached counts are applied right away, so redraws never flicker;
+	 * the rest are fetched once the note settles, with no loading state.
+	 */
+	private showStats(): void {
+		const { api } = this.plugin;
+		if (!api.hasApiKey) return;
+		let missing = false;
+		for (const [url, els] of this.rowEls) {
+			const info = api.peekUrlInfo(url);
+			if (info) for (const el of els) applyStats(el, info);
+			else missing = true;
+		}
+		if (missing) this.fetchStatsLater();
+	}
+
+	/** Fetch stats for rows that don't have them yet, a few at a time to go easy on the API. */
+	private async fetchStats(): Promise<void> {
+		const { api } = this.plugin;
+		if (!api.hasApiKey) return;
+		const run = ++this.statsRun;
+		const queue = [...this.rowEls.keys()].filter((url) => !api.peekUrlInfo(url));
+
+		const worker = async () => {
+			for (let url = queue.shift(); url !== undefined; url = queue.shift()) {
+				let info: UrlInfo;
+				try {
+					info = await api.getUrlInfo(url);
+				} catch {
+					continue; // Stats are extra; the row works without them.
+				}
+				if (run !== this.statsRun) return;
+				for (const el of this.rowEls.get(url) ?? []) applyStats(el, info);
+			}
+		};
+		await Promise.all([worker(), worker(), worker()]);
 	}
 
 	private renderEmpty(message: string): void {
@@ -174,7 +229,7 @@ export class LinksView extends ItemView {
 
 	private renderItem(link: WebLink): void {
 		const host = hostOf(link.url);
-		renderRow(this.listEl, {
+		const itemEl = renderRow(this.listEl, {
 			title: link.displayText,
 			detail: host && host !== link.displayText ? host : undefined,
 			tooltip: link.url,
@@ -184,6 +239,9 @@ export class LinksView extends ItemView {
 			},
 			onContextMenu: (evt) => this.showMenu(link, evt),
 		});
+		const rows = this.rowEls.get(link.url) ?? [];
+		rows.push(itemEl);
+		this.rowEls.set(link.url, rows);
 	}
 
 	private showMenu(link: WebLink, evt: MouseEvent): void {
@@ -237,4 +295,21 @@ export class LinksView extends ItemView {
 
 function matchesFilter(link: WebLink, filter: string): boolean {
 	return link.displayText.toLowerCase().includes(filter) || link.url.toLowerCase().includes(filter);
+}
+
+/** Save count in the row's flair, highlighted with a checkmark when the link is in your library. */
+function applyStats(itemEl: HTMLElement, info: UrlInfo): void {
+	const saves = info.stats?.libraryCount ?? 0;
+	if (info.urlInLibrary) {
+		const count = Math.max(saves, 1);
+		setRowFlair(itemEl, String(count), {
+			icon: "check",
+			cls: "mod-saved",
+			tooltip: `In your library · ${plural(count, "save")} on Semble`,
+		});
+	} else if (saves > 0) {
+		setRowFlair(itemEl, String(saves), { tooltip: `${plural(saves, "save")} on Semble` });
+	} else {
+		setRowFlair(itemEl, null);
+	}
 }

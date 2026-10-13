@@ -89,6 +89,27 @@ export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLEleme
 	return itemEl;
 }
 
+/**
+ * Set (or clear, with null) a row's right-aligned flair after it was rendered,
+ * e.g. once data for it arrives. `icon` goes before the text.
+ */
+export function setRowFlair(
+	itemEl: HTMLElement,
+	text: string | null,
+	options: { icon?: string; cls?: string; tooltip?: string } = {},
+): void {
+	const selfEl = itemEl.querySelector<HTMLElement>(":scope > .tree-item-self");
+	if (!selfEl) return;
+	selfEl.querySelector(":scope > .tree-item-flair-outer")?.remove();
+	if (text === null) return;
+
+	const flairEl = selfEl.createDiv({ cls: "tree-item-flair-outer" }).createSpan({ cls: "tree-item-flair" });
+	if (options.cls) flairEl.addClass(options.cls);
+	if (options.icon) setIcon(flairEl.createSpan({ cls: "semble-flair-icon" }), options.icon);
+	flairEl.createSpan({ text });
+	if (options.tooltip) flairEl.setAttr("aria-label", options.tooltip);
+}
+
 export function renderThumbnail(parentEl: HTMLElement, src: string, cls: string): void {
 	const img = parentEl.createEl("img", { cls, attr: { src, alt: "", loading: "lazy", referrerpolicy: "no-referrer" } });
 	img.addEventListener("error", () => img.remove());

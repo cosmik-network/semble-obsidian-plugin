@@ -128,6 +128,21 @@ describe("SembleClient cache", () => {
 		expect(requestUrl).toHaveBeenCalledTimes(3);
 	});
 
+	it("peeks at cached results without making requests", async () => {
+		requestUrl.mockResolvedValue(info("https://a.dev"));
+		const client = new SembleClient(() => "k");
+		expect(client.peekUrlInfo("https://a.dev")).toBeUndefined();
+
+		const pending = client.getUrlInfo("https://a.dev");
+		expect(client.peekUrlInfo("https://a.dev")).toBeUndefined(); // still in flight
+		await pending;
+		expect(client.peekUrlInfo("https://a.dev")).toEqual({ metadata: { url: "https://a.dev" } });
+
+		client.invalidate({ urls: ["https://a.dev/"] });
+		expect(client.peekUrlInfo("https://a.dev")).toBeUndefined();
+		expect(requestUrl).toHaveBeenCalledTimes(1);
+	});
+
 	it("starts over when the API key changes", async () => {
 		requestUrl.mockResolvedValue(ok({ id: "u1", name: "U", handle: "u.bsky.social" }));
 		let key = "first";

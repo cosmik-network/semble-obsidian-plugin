@@ -144,6 +144,8 @@ interface CacheEntry {
 	url?: string;
 	expires: number;
 	value: Promise<unknown>;
+	/** The resolved response, once it arrives, for synchronous reads via peek(). */
+	result?: { value: unknown };
 }
 
 /**
@@ -185,6 +187,11 @@ export class SembleClient {
 
 	getUrlInfo(url: string): Promise<UrlInfo> {
 		return this.get("network.cosmik.card.getUrlMetadata", { url, includeStats: true });
+	}
+
+	/** getUrlInfo's cached result, if it has already arrived; never makes a request. */
+	peekUrlInfo(url: string): UrlInfo | undefined {
+		return this.peek("network.cosmik.card.getUrlMetadata", { url, includeStats: true });
 	}
 
 	async getLibraryStatus(url: string): Promise<LibraryStatus> {
@@ -294,20 +301,35 @@ export class SembleClient {
 
 	// --- Transport ---
 
-	private get<T>(method: string, query: Query = {}): Promise<T> {
+	private pathFor(method: string, query: Query): string {
 		const params = new URLSearchParams();
 		for (const [key, value] of Object.entries(query)) {
 			if (value !== undefined) params.set(key, String(value));
 		}
 		const qs = params.toString();
-		const path = `${method}${qs ? `?${qs}` : ""}`;
+		return `${method}${qs ? `?${qs}` : ""}`;
+	}
 
+	private checkCacheKey(): void {
 		const apiKey = this.getApiKey();
 		if (apiKey !== this.cacheKey) {
 			// Different key, possibly a different account: nothing cached still applies.
 			this.cache.clear();
 			this.cacheKey = apiKey;
 		}
+	}
+
+	/** A cached GET response that has already arrived, without making a request. */
+	private peek<T>(method: string, query: Query): T | undefined {
+		this.checkCacheKey();
+		const entry = this.cache.get(this.pathFor(method, query));
+		if (!entry || entry.expires <= Date.now()) return undefined;
+		return entry.result?.value as T | undefined;
+	}
+
+	private get<T>(method: string, query: Query = {}): Promise<T> {
+		const path = this.pathFor(method, query);
+		this.checkCacheKey();
 
 		const now = Date.now();
 		const hit = this.cache.get(path);
@@ -321,10 +343,13 @@ export class SembleClient {
 			value,
 		};
 		this.cache.set(path, entry);
-		// Never cache failures; the caller still sees the rejection.
-		value.catch(() => {
-			if (this.cache.get(path) === entry) this.cache.delete(path);
-		});
+		value.then(
+			(result) => (entry.result = { value: result }),
+			// Never cache failures; the caller still sees the rejection.
+			() => {
+				if (this.cache.get(path) === entry) this.cache.delete(path);
+			},
+		);
 		return value;
 	}
 
