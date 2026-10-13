@@ -139,6 +139,7 @@ export class LinksView extends ItemView {
 				noteLinks: () => this.links,
 				initialTab: this.detailTab,
 				onTabChange: (tab) => (this.detailTab = tab),
+				overlayEl: this.contentEl,
 			}),
 		);
 	}

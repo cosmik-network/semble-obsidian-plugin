@@ -23,7 +23,13 @@ The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, s
 
 ### The link view
 
-Clicking a link in the list opens a view for that link, laid out like Semble's browser extension. The header shows the site, title, description, thumbnail, an **In library** badge, and counts of saves, collections and connections. The back arrow returns to the list. The icons next to it reload the link's data from Semble, jump to the link in the note, or open it in your browser. Links reopen on the tab you last used. There are three tabs:
+Clicking a link in the list opens a view for that link, laid out like Semble's browser extension. The header shows the site, title, description, thumbnail, an **In library** badge, and counts of saves, collections and connections. The counts are clickable:
+
+- **Saves** opens a *Saved by* sheet listing everyone who saved the link. Click a person to open their Semble profile, `semble.so/profile/<handle>`.
+- **Collections** opens an *In collections* sheet. Each collection shows its description, a strip of its cards, its card count and when it was last updated. Click a collection to open it on Semble, at `semble.so/profile/<owner handle>/collections/<rkey>`, where `rkey` is the last segment of the collection's AT URI. Click a card to open its link.
+- **Connections** switches to the Connections tab.
+
+Sheets close with ×, Escape, or a click outside them. The back arrow returns to the list. The icons next to it reload the link's data from Semble, jump to the link in the note, or open it in your browser. Links reopen on the tab you last used. There are three tabs:
 
 - **Add / Update**: choose collections and write a note, then **Add to library**, or **Update** if the link is already saved. You can switch the collection list between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If no collection matches, it offers to create one with that name. The trash button removes the link from your library.
 - **Related**: links that Semble considers similar, filtered by type (article, book, video, and so on). Click one to open it.
@@ -77,6 +83,7 @@ src/
     LibraryTab.ts         Add / Update: collections, note, save and remove
     RelatedTab.ts         Related links, filtered by type
     ConnectionsTab.ts     Connection list and the create-connection form
+    sheets.ts             "Saved by" and "In collections" bottom sheets opened from the stats
 tests/
   links.test.ts  api.test.ts  urls.test.ts
 styles.css      Pane styles; Obsidian loads this automatically
@@ -115,6 +122,7 @@ Entries are matched with `sameUrl()`, so normalized URLs still match. A differen
 | Where                     | Endpoints                                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Header                    | `card.getUrlMetadata` (with `includeStats`)                                                                  |
+| Stat sheets               | `card.getLibrariesForUrl` (Saved by), `collection.getForUrl` and `collection.get` (card previews, fetched as each collection scrolls into view) |
 | Add / Update              | `card.getLibraryStatus`, `collection.listMine`, `collection.getRecommendedForUrl`, `collection.search` (open), `collection.create`, `card.addUrl`, `card.updateUrlAssociations`, `card.removeFromLibrary` |
 | Related                   | `search.getSimilarUrls`                                                                                      |
 | Connections               | `connection.getForUrl` (both directions), `connection.create`, `connection.delete`, `actor.getMyProfile` (to know which connections are yours) |

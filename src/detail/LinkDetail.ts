@@ -8,6 +8,7 @@ import { ConnectionsTab } from "./ConnectionsTab";
 import type { DetailContext, Panel } from "./context";
 import { LibraryTab } from "./LibraryTab";
 import { RelatedTab } from "./RelatedTab";
+import { InCollectionsSheet, SavedBySheet } from "./sheets";
 
 export type TabId = "library" | "related" | "connections";
 
@@ -18,6 +19,8 @@ export interface LinkDetailHost {
 	/** The tab to start on, and a callback to remember the user's choice. */
 	initialTab: TabId;
 	onTabChange(tab: TabId): void;
+	/** Element that sheets overlay: the whole pane, not just the scrolling detail area. */
+	overlayEl: HTMLElement;
 }
 
 /**
@@ -29,6 +32,7 @@ export class LinkDetail extends Component {
 	private infoError: string | null = null;
 	private tab: TabId;
 	private panel: Panel | null = null;
+	private sheet: Component | null = null;
 	private alive = false;
 
 	private headerEl!: HTMLElement;
@@ -139,15 +143,17 @@ export class LinkDetail extends Component {
 		if (info?.stats) {
 			const { stats } = info;
 			const statsEl = textEl.createDiv({ cls: "semble-stats" });
-			for (const [count, label] of [
-				[stats.libraryCount, "save"],
-				[stats.collectionCount, "collection"],
-				[stats.connections.all.total, "connection"],
-			] as const) {
+			const statItems: [number, string, () => void][] = [
+				[stats.libraryCount, "save", () => this.openSheet(SavedBySheet)],
+				[stats.collectionCount, "collection", () => this.openSheet(InCollectionsSheet)],
+				[stats.connections.all.total, "connection", () => this.showTab("connections")],
+			];
+			for (const [count, label, onClick] of statItems) {
 				const [num, ...words] = plural(count, label).split(" ");
-				const statEl = statsEl.createSpan({ cls: "semble-stat" });
+				const statEl = statsEl.createEl(count > 0 ? "button" : "span", { cls: "semble-stat" });
 				statEl.createEl("strong", { text: num });
 				statEl.appendText(` ${words.join(" ")}`);
+				if (count > 0) statEl.addEventListener("click", onClick);
 			}
 		} else if (this.plugin.api.hasApiKey && !this.infoError) {
 			textEl.createDiv({ cls: "semble-muted", text: "Loading from Semble…" });
@@ -181,6 +187,17 @@ export class LinkDetail extends Component {
 			tabEl.setAttr("aria-selected", String(id === this.tab));
 			tabEl.addEventListener("click", () => this.showTab(id));
 		}
+	}
+
+	private openSheet(Sheet: typeof SavedBySheet | typeof InCollectionsSheet): void {
+		this.closeSheet();
+		this.sheet = this.addChild(new Sheet(this.host.overlayEl, this.ctx, () => this.closeSheet()));
+	}
+
+	private closeSheet(): void {
+		if (!this.sheet) return;
+		this.removeChild(this.sheet);
+		this.sheet = null;
 	}
 
 	private showTab(id: TabId): void {

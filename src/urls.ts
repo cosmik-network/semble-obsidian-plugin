@@ -34,3 +34,19 @@ export function isHttpUrl(value: string): boolean {
 		return false;
 	}
 }
+
+const SEMBLE_WEB = "https://semble.so";
+
+export function sembleProfileUrl(handle: string): string {
+	return `${SEMBLE_WEB}/profile/${encodeURIComponent(handle)}`;
+}
+
+/**
+ * Web page for a collection: its owner's profile plus the record key, the
+ * last segment of the collection's AT URI. Null if the URI is missing.
+ */
+export function sembleCollectionUrl(handle: string, atUri: string | undefined): string | null {
+	const rkey = atUri?.split("/").pop();
+	if (!rkey || !atUri?.startsWith("at://")) return null;
+	return `${sembleProfileUrl(handle)}/collections/${encodeURIComponent(rkey)}`;
+}

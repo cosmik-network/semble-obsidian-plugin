@@ -534,3 +534,228 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+/* ---------- Stats and sheets ---------- */
+
+button.semble-stat,
+button.semble-stat:hover {
+	height: auto;
+	padding: 0;
+	border: none;
+	background: none;
+	box-shadow: none;
+	color: inherit;
+	font-size: inherit;
+	cursor: pointer;
+}
+
+button.semble-stat:hover {
+	color: var(--text-normal);
+	text-decoration: underline;
+}
+
+.semble-links-view {
+	position: relative;
+}
+
+.semble-sheet-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: var(--layer-popover);
+	display: flex;
+	align-items: flex-end;
+	background-color: var(--background-modifier-cover);
+	outline: none;
+	animation: semble-fade-in 120ms ease-out;
+}
+
+.semble-sheet {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-height: 80%;
+	border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+	background-color: var(--background-primary);
+	box-shadow: var(--shadow-l);
+	animation: semble-slide-up 160ms ease-out;
+}
+
+@keyframes semble-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes semble-slide-up {
+	from {
+		transform: translateY(24px);
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.semble-sheet-backdrop,
+	.semble-sheet {
+		animation: none;
+	}
+}
+
+.semble-sheet-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-3) var(--size-4-3) var(--size-4-2) var(--size-4-4);
+}
+
+.semble-sheet-title {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+}
+
+.semble-sheet-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	overflow-y: auto;
+	padding: 0 var(--size-4-3) var(--size-4-4);
+}
+
+/* Saved by */
+
+.semble-user {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-1) var(--size-4-1);
+	border-radius: var(--radius-m);
+	color: var(--text-normal);
+	text-decoration: none;
+}
+
+.semble-user:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.semble-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	overflow: hidden;
+	border-radius: var(--radius-m);
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+}
+
+.semble-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.semble-user-text {
+	min-width: 0;
+}
+
+.semble-user-name,
+.semble-user-handle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semble-user-name {
+	font-weight: var(--font-medium);
+}
+
+.semble-user-handle {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* In collections */
+
+.semble-collection-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+}
+
+.semble-collection-card.is-clickable {
+	cursor: pointer;
+}
+
+.semble-collection-card.is-clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.semble-collection-card-title {
+	font-weight: var(--font-semibold);
+}
+
+.semble-collection-card-footer {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.semble-preview-row {
+	display: flex;
+	gap: var(--size-4-2);
+	min-height: 1px;
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+
+.semble-mini-card {
+	flex: 0 0 120px;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.semble-mini-thumb {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 72px;
+	margin-bottom: var(--size-2-2);
+	overflow: hidden;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	color: var(--text-faint);
+}
+
+.semble-mini-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.semble-mini-card:hover .semble-mini-thumb {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.semble-mini-site {
+	overflow: hidden;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semble-mini-title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	font-size: var(--font-ui-small);
+}

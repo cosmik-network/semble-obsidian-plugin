@@ -17,6 +17,8 @@ export const COLLECTION_LISTS = [
 	"network.cosmik.collection.listMine",
 	"network.cosmik.collection.search",
 	"network.cosmik.collection.getRecommendedForUrl",
+	// A collection's card list changes when a card is added to or removed from it.
+	"network.cosmik.collection.get",
 ];
 
 export const API_KEYS_URL = "https://semble.so/settings/api-keys";
@@ -57,11 +59,24 @@ export interface User {
 
 export interface Collection {
 	id: string;
+	/** AT URI, e.g. at://did:plc:…/network.cosmik.collection/<rkey>. */
+	uri?: string;
 	name: string;
 	description?: string;
 	accessType?: "OPEN" | "CLOSED";
 	cardCount: number;
+	updatedAt?: string;
 	author: User;
+}
+
+export interface CollectionWithCards extends Collection {
+	urlCards: UrlCard[];
+}
+
+/** A user who saved a URL, with their card for it. */
+export interface LibraryEntry {
+	user: User;
+	card: UrlCard;
 }
 
 export interface UrlCard {
@@ -211,7 +226,20 @@ export class SembleClient {
 		return this.get("network.cosmik.search.getSimilarUrls", { url, ...options });
 	}
 
+	getLibrariesForUrl(url: string, page = 1): Promise<{ libraries: LibraryEntry[]; pagination: Pagination }> {
+		return this.get("network.cosmik.card.getLibrariesForUrl", { url, page, limit: 30 });
+	}
+
 	// --- Collections ---
+
+	getCollectionsForUrl(url: string, page = 1): Promise<{ collections: Collection[]; pagination: Pagination }> {
+		return this.get("network.cosmik.collection.getForUrl", { url, page, limit: 20 });
+	}
+
+	/** A collection with its first few cards, for previews. */
+	getCollection(collectionId: string, limit = 8): Promise<CollectionWithCards> {
+		return this.get("network.cosmik.collection.get", { collectionId, limit });
+	}
 
 	listMyCollections(searchText?: string): Promise<{ collections: Collection[] }> {
 		return this.get("network.cosmik.collection.listMine", {
