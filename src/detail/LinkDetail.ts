@@ -2,7 +2,7 @@ import { Component, debounce, setIcon } from "obsidian";
 import { API_KEYS_URL, type UrlInfo } from "../api";
 import type { WebLink } from "../links";
 import type SemblePlugin from "../main";
-import { errorText, openUrl, plural, renderToggleGroup, type ToggleGroup } from "../ui";
+import { errorText, openLink, plural, renderToggleGroup, type ToggleGroup } from "../ui";
 import { hostOf, sameUrl } from "../urls";
 import { ConnectionsPanel } from "./ConnectionsPanel";
 import type { DetailContext, Panel } from "./context";
@@ -144,7 +144,7 @@ export class LinkDetail extends Component {
 
 		button("arrow-left", "Back to links", () => this.host.back());
 		button("text-cursor", "Jump to link in note", () => this.host.revealInNote(this.link));
-		button("external-link", "Open link", () => openUrl(this.link.url));
+		button("external-link", "Open on Semble", () => openLink(this.link.url));
 	}
 
 	private async loadInfo(): Promise<void> {

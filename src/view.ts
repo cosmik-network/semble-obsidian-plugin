@@ -13,7 +13,7 @@ import { LinkDetail, type ViewId } from "./detail/LinkDetail";
 import { extractLinks, type WebLink } from "./links";
 import type SemblePlugin from "./main";
 import type { UrlInfo } from "./api";
-import { openUrl, plural, renderRow, setRowFlair } from "./ui";
+import { openLink, renderRow, setSavesFlair } from "./ui";
 import { SEMBLE_ICON } from "./icon";
 import { hostOf } from "./urls";
 
@@ -250,7 +250,7 @@ export class LinksView extends ItemView {
 			detail: host && host !== link.displayText ? host : undefined,
 			tooltip: link.url,
 			onClick: (evt) => {
-				if (Keymap.isModEvent(evt)) openUrl(link.url);
+				if (Keymap.isModEvent(evt)) openLink(link.url);
 				else this.openDetail(link);
 			},
 			onContextMenu: (evt) => this.showMenu(link, evt),
@@ -263,7 +263,7 @@ export class LinksView extends ItemView {
 	private showMenu(link: WebLink, evt: MouseEvent): void {
 		const menu = new Menu();
 		menu.addItem((item) => item.setTitle("Show in Semble").setIcon("info").onClick(() => this.openDetail(link)));
-		menu.addItem((item) => item.setTitle("Open link").setIcon("external-link").onClick(() => openUrl(link.url)));
+		menu.addItem((item) => item.setTitle("Open on Semble").setIcon("external-link").onClick(() => openLink(link.url)));
 		menu.addItem((item) =>
 			item.setTitle("Jump to link in note").setIcon("text-cursor").onClick(() => this.revealInNote(link)),
 		);
@@ -313,19 +313,7 @@ function matchesFilter(link: WebLink, filter: string): boolean {
 	return link.displayText.toLowerCase().includes(filter) || link.url.toLowerCase().includes(filter);
 }
 
-/** Save count in the row's flair, highlighted with a checkmark when the link is in your library. */
+/** Show a link's Semble save count in its row. */
 function applyStats(itemEl: HTMLElement, info: UrlInfo): void {
-	const saves = info.stats?.libraryCount ?? 0;
-	if (info.urlInLibrary) {
-		const count = Math.max(saves, 1);
-		setRowFlair(itemEl, String(count), {
-			icon: "check",
-			cls: "mod-saved",
-			tooltip: `In your library · ${plural(count, "save")} on Semble`,
-		});
-	} else if (saves > 0) {
-		setRowFlair(itemEl, String(saves), { tooltip: `${plural(saves, "save")} on Semble` });
-	} else {
-		setRowFlair(itemEl, null);
-	}
+	setSavesFlair(itemEl, info.stats?.libraryCount ?? 0, Boolean(info.urlInLibrary));
 }

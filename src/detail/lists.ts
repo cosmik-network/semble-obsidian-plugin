@@ -1,6 +1,6 @@
 import { moment } from "obsidian";
 import { URL_TYPES, type Collection, type LibraryEntry, type UrlType, type UrlView } from "../api";
-import { openUrl, plural, renderRow, renderToggleGroup } from "../ui";
+import { openLink, openUrl, plural, renderRow, renderToggleGroup, setSavesFlair } from "../ui";
 import { hostOf, sembleCollectionUrl, sembleProfileUrl } from "../urls";
 import { PagedPanel } from "./context";
 
@@ -38,14 +38,14 @@ export class RelatedPanel extends PagedPanel<UrlView> {
 	}
 
 	protected renderItem(item: UrlView): void {
-		// Compact: title and site only. The full URL is in the tooltip.
-		renderRow(this.listEl, {
+		// Compact: title and site, plus the save count like the link list. The full URL is in the tooltip.
+		const itemEl = renderRow(this.listEl, {
 			title: item.metadata.title || item.url,
 			detail: hostOf(item.url) ?? undefined,
-			flair: item.urlInLibrary ? "Saved" : undefined,
 			tooltip: item.url,
-			onClick: () => openUrl(item.url),
+			onClick: () => openLink(item.url),
 		});
+		setSavesFlair(itemEl, item.urlLibraryCount ?? 0, Boolean(item.urlInLibrary));
 	}
 }
 

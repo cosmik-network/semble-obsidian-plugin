@@ -1,8 +1,14 @@
 import { App, Modal, Setting, setIcon } from "obsidian";
+import { sembleUrlPage } from "./urls";
 
 /** Obsidian routes window.open for http(s) URLs to the system browser (or Web viewer, if enabled). */
 export function openUrl(url: string): void {
 	window.open(url);
+}
+
+/** Open a web link's page on Semble, which is where the plugin sends every link. */
+export function openLink(url: string): void {
+	openUrl(sembleUrlPage(url));
 }
 
 export function errorText(err: unknown): string {
@@ -108,6 +114,26 @@ export function setRowFlair(
 	if (options.icon) setIcon(flairEl.createSpan({ cls: "semble-flair-icon" }), options.icon);
 	flairEl.createSpan({ text });
 	if (options.tooltip) flairEl.setAttr("aria-label", options.tooltip);
+}
+
+/**
+ * A row's Semble save count, as in the link list: the number of saves, in the
+ * accent colour with a checkmark when the link is in your library, or nothing
+ * when no one has saved it.
+ */
+export function setSavesFlair(itemEl: HTMLElement, saves: number, inLibrary: boolean): void {
+	if (inLibrary) {
+		const count = Math.max(saves, 1);
+		setRowFlair(itemEl, String(count), {
+			icon: "check",
+			cls: "mod-saved",
+			tooltip: `In your library · ${plural(count, "save")} on Semble`,
+		});
+	} else if (saves > 0) {
+		setRowFlair(itemEl, String(saves), { tooltip: `${plural(saves, "save")} on Semble` });
+	} else {
+		setRowFlair(itemEl, null);
+	}
 }
 
 export function renderThumbnail(parentEl: HTMLElement, src: string, cls: string): void {

@@ -10,7 +10,7 @@ import {
 } from "obsidian";
 import { CONNECTION_TYPES, type Connection, type ConnectionType, type User } from "../api";
 import type { WebLink } from "../links";
-import { ConfirmModal, errorText, openUrl, renderMessage, renderRow } from "../ui";
+import { ConfirmModal, errorText, openLink, renderMessage, renderRow } from "../ui";
 import { hostOf, isHttpUrl, sameUrl } from "../urls";
 import { Panel } from "./context";
 
@@ -86,10 +86,12 @@ export class ConnectionsPanel extends Panel {
 			title: other.metadata.title || other.url,
 			detail: `${connectionLabel(connection.type)} · ${hostOf(other.url) ?? other.url} · @${connection.curator.handle}`,
 			tooltip: [other.url, direction, connection.note].filter(Boolean).join("\n"),
-			onClick: () => openUrl(other.url),
+			onClick: () => openLink(other.url),
 			onContextMenu: (evt) => {
 				const menu = new Menu();
-				menu.addItem((i) => i.setTitle("Open link").setIcon("external-link").onClick(() => openUrl(other.url)));
+				menu.addItem((i) =>
+					i.setTitle("Open on Semble").setIcon("external-link").onClick(() => openLink(other.url)),
+				);
 				menu.addItem((i) =>
 					i
 						.setTitle("Copy URL")

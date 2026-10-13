@@ -1,12 +1,13 @@
 # Semble for Obsidian
 
-A sidebar pane that lists every web link (http/https URL) in the current note, the way the core **Outline** pane lists headings. Click a link to see it on [Semble](https://semble.so): save it to your library and collections, browse related links, and connect it to other links. Links to other notes are ignored.
+A sidebar pane that lists every web link (http/https URL) in the current note, the way the core **Outline** pane lists headings. Click a link to interact with it as you would on Semble: save it to your library and collections, browse related links, and connect it to other links.
 
 - Finds `[text](https://…)` links, `<https://…>` links, bare `https://…` URLs, and remote images
 - Skips anything that isn't a web link: `[[wikilinks]]`, `[text](note.md)`, `mailto:`, `obsidian://`, and URLs inside code or frontmatter
 - Follows the note you're working on and updates as you type
-- Click a link to open its Semble view; Ctrl/Cmd-click opens it in your browser
-- Right-click to open the link, jump to it in the note, or copy the URL
+- Click a link to open its Semble view; Ctrl/Cmd-click opens it on Semble
+- Right-click to open the link on Semble, jump to it in the note, or copy the URL
+- Links open on their Semble page, `https://semble.so/url?id=<link>`, rather than on the site itself. Links to Semble collections (`semble.so/profile/<handle>/collections/<rkey>`) open as they are.
 - A filter box to narrow down the list
 - With a Semble API key, each link shows how many people saved it on Semble, on the right like Outline's counts. Links in your library show the count in your accent colour with a checkmark. Links with no saves show nothing, and there's no loading state. Counts appear once the note has been unchanged for a second, so typing a URL doesn't look up every partial URL.
 
@@ -26,28 +27,29 @@ The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, s
 
 Clicking a link in the list opens a view for that link. It's laid out like Semble's browser extension but built from Obsidian's own toolbar buttons, list rows and inputs. The parts, from top to bottom:
 
-- **Toolbar:** buttons to go back to the list, jump to the link in the note, and open the link.
-- **Header:** the site, a *Saved* marker if the link is in your library, the title and the description.
+- **Toolbar:** buttons to go back to the list, jump to the link in the note, and open the link on Semble.
+- **Header:** the site, a _Saved_ marker if the link is in your library, the title and the description.
 - **Stats:** saves, collections and connections. Each count works like an extra tab. Clicking it shows its list in the area below the tab bar and highlights the count:
-  - **Saves** shows *Saved by*. Click someone to open their Semble profile, `semble.so/profile/<handle>`.
-  - **Collections** shows *In collections*, with each collection's card count, owner and last update. Click one to open it on Semble, at `semble.so/profile/<owner handle>/collections/<rkey>`, where `rkey` is the last segment of the collection's AT URI.
-  - **Connections** switches to the Connections tab.
+    - **Saves** shows _Saved by_. Click someone to open their Semble profile, `semble.so/profile/<handle>`.
+    - **Collections** shows _In collections_, with each collection's card count, owner and last update. Click one to open it on Semble, at `semble.so/profile/<owner handle>/collections/<rkey>`, where `rkey` is the last segment of the collection's AT URI.
+    - **Connections** switches to the Connections tab.
 
-  Click any tab to go back.
+    Click any tab to go back.
+
 - **Tabs:** Add, Related and Connections. Links reopen on the tab, or stat list, you last used.
-  - **Add**: tick collections and add a note, then **Add to library**, or **Update** if the link is already saved. The buttons above the list switch between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If nothing matches, it offers to create a collection with that name. **Remove** takes the link out of your library.
-  - **Related**: a compact list of links that Semble considers similar. Each row shows the title and site, and *Saved* if the link is in your library. Hover for the full URL. Buttons above the list filter by type (article, book, video, and so on).
-  - **Connections**: typed connections such as *Supports*, *Opposes* or *Related*. Each row shows the linked page's title, then the type, the site and who made it. Hover a row for the URL, the direction and any note. Click a row to open the other link. Right-click one of your own connections to delete it. **Add connection…**, at the top of the list, opens a form laid out like the extension's:
-    - This link at the top, a connection-type dropdown in the middle, and the other link below. The swap button reverses the direction.
-    - The other link's field suggests the note's other web links, or you can paste any URL.
-    - An optional note.
+    - **Add**: tick collections and add a note, then **Add to library**, or **Update** if the link is already saved. The buttons above the list switch between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If nothing matches, it offers to create a collection with that name. **Remove** takes the link out of your library.
+    - **Related**: a compact list of links that Semble considers similar. Each row shows the title and site, plus the save count like the link list, in your accent colour with a checkmark if the link is in your library. Hover for the full URL. Buttons above the list filter by type (article, book, video, and so on).
+    - **Connections**: typed connections such as _Supports_, _Opposes_ or _Related_. Each row shows the linked page's title, then the type, the site and who made it. Hover a row for the URL, the direction and any note. Click a row to open the other link. Right-click one of your own connections to delete it. **Add connection…**, at the top of the list, opens a form laid out like the extension's:
+        - This link at the top, a connection-type dropdown in the middle, and the other link below. The swap button reverses the direction.
+        - The other link's field suggests the note's other web links, or you can paste any URL.
+        - An optional note.
 
 ### Settings
 
-| Setting             | Default | Effect                                                                     |
-| ------------------- | ------- | -------------------------------------------------------------------------- |
-| API key             | None    | The secret that holds your Semble API key                                  |
-| Check connection    | —       | Calls Semble with the key and shows which account it belongs to            |
+| Setting          | Default | Effect                                                          |
+| ---------------- | ------- | --------------------------------------------------------------- |
+| API key          | None    | The secret that holds your Semble API key                       |
+| Check connection | —       | Calls Semble with the key and shows which account it belongs to |
 
 The settings tab sets the Semble icon. Obsidian doesn't show icons for community plugins in the settings sidebar, but it does show this one next to "Semble" in settings search results.
 
@@ -104,13 +106,13 @@ versions.json   Maps each plugin version to its minimum Obsidian version
 
 Links are listed in the order they appear in the note. Each link keeps its `Pos` (line, column, offset), which **Jump to link in note** uses to select the link's text.
 
-**Tracking the note.** Like Outline, the pane shows the most recently *opened* file, not whichever pane has focus. So when you click into the sidebar, it keeps showing your note. The view listens to these events:
+**Tracking the note.** Like Outline, the pane shows the most recently _opened_ file, not whichever pane has focus. So when you click into the sidebar, it keeps showing your note. The view listens to these events:
 
-| Event                    | Reaction                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `workspace:file-open`    | Switch to the new file                                                                               |
-| `metadataCache:changed`  | Re-extract links, debounced, if it's our file. This fires after edits, so the pane updates as you type |
-| `vault:delete`           | Clear the pane if our file was deleted                                                               |
+| Event                   | Reaction                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| `workspace:file-open`   | Switch to the new file                                                                                 |
+| `metadataCache:changed` | Re-extract links, debounced, if it's our file. This fires after edits, so the pane updates as you type |
+| `vault:delete`          | Clear the pane if our file was deleted                                                                 |
 
 `refresh()` reads the file asynchronously, so each call takes an ID first. If a newer refresh has started by the time the read finishes, the older result is thrown away.
 
@@ -118,7 +120,7 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 **Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
 
-**Caching.** GET responses are cached in memory and served *stale-while-revalidate*:
+**Caching.** GET responses are cached in memory and served _stale-while-revalidate_:
 
 - Opening a link, or switching tabs, renders straight from the cache. Anything more than 10 seconds old is then fetched again in the background.
 - If the fresh data is identical, nothing changes on screen. If it differs, such as a new collection, save or connection, the client updates the cache and calls `onChange` listeners. The link view then redraws its header, and the current tab unless you're mid-edit: unsaved collection changes, a search or filter, extra pages loaded, or the add-connection form open. The link list redraws its counts.
@@ -137,14 +139,14 @@ Entries are matched with `sameUrl()`, so normalized URLs still match. A differen
 
 **Errors.** 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
 
-| Where                     | Endpoints                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Header and stats          | `card.getUrlMetadata` (with `includeStats`)                                                                  |
-| Saved by, In collections  | `card.getLibrariesForUrl`, `collection.getForUrl`                                                            |
-| Library                   | `card.getLibraryStatus`, `collection.listMine`, `collection.getRecommendedForUrl`, `collection.search` (open), `collection.create`, `card.addUrl`, `card.updateUrlAssociations`, `card.removeFromLibrary` |
-| Related                   | `search.getSimilarUrls`                                                                                      |
-| Connections               | `connection.getForUrl` (both directions), `connection.create`, `connection.delete`, `actor.getMyProfile` (to know which connections are yours) |
-| Settings                  | `actor.getMyProfile` (Check connection)                                                                      |
+| Where                    | Endpoints                                                                                                                                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header and stats         | `card.getUrlMetadata` (with `includeStats`)                                                                                                                                                               |
+| Saved by, In collections | `card.getLibrariesForUrl`, `collection.getForUrl`                                                                                                                                                         |
+| Library                  | `card.getLibraryStatus`, `collection.listMine`, `collection.getRecommendedForUrl`, `collection.search` (open), `collection.create`, `card.addUrl`, `card.updateUrlAssociations`, `card.removeFromLibrary` |
+| Related                  | `search.getSimilarUrls`                                                                                                                                                                                   |
+| Connections              | `connection.getForUrl` (both directions), `connection.create`, `connection.delete`, `actor.getMyProfile` (to know which connections are yours)                                                            |
+| Settings                 | `actor.getMyProfile` (Check connection)                                                                                                                                                                   |
 
 Semble normalizes URLs, for example `https://semble.so` becomes `https://semble.so/`, so the plugin compares URLs with `sameUrl()` rather than `===`.
 
@@ -153,12 +155,12 @@ Semble normalizes URLs, for example `https://semble.so` becomes `https://semble.
 - **Views:** the plugin never keeps references to its view. It looks them up with `getLeavesOfType()` and checks `instanceof LinksView`, because leaves can be deferred since 1.7. It doesn't detach leaves in `onunload()`, so the pane stays in place when the plugin is updated.
 - **Cleanup:** every listener is attached with `registerEvent` / `register*`, so it's removed automatically when the view closes or the plugin unloads.
 - **Native UI:** the plugin uses Obsidian's own building blocks instead of custom widgets, so it looks right in any theme:
-  - Every list is built from core `tree-item` rows, which can carry a thumbnail on the right.
-  - The toolbar is a core `nav-header`. The tabs and filter rows are core `clickable-icon` buttons marked `is-active`, so they pick up the theme's hover and active states.
-  - The search box is a `SearchComponent`, the collection picker uses native checkboxes, and actions are standard buttons with `mod-cta` and `mod-warning`.
-  - Confirmations open in a `Modal`. Everything else stays in the sidebar.
-  - `styles.css` only adds layout, using theme variables throughout.
-  - Elements are created with `createEl` / `createDiv`, never `innerHTML`.
+    - Every list is built from core `tree-item` rows, which can carry a thumbnail on the right.
+    - The toolbar is a core `nav-header`. The tabs and filter rows are core `clickable-icon` buttons marked `is-active`, so they pick up the theme's hover and active states.
+    - The search box is a `SearchComponent`, the collection picker uses native checkboxes, and actions are standard buttons with `mod-cta` and `mod-warning`.
+    - Confirmations open in a `Modal`. Everything else stays in the sidebar.
+    - `styles.css` only adds layout, using theme variables throughout.
+    - Elements are created with `createEl` / `createDiv`, never `innerHTML`.
 - **Workspace API:** it uses `getActiveFile()`, `revealLeaf()` and `Keymap.isModEvent()` instead of `workspace.activeLeaf` or hand-rolled modifier-key checks. It opens URLs with `window.open()`, which Obsidian sends to the system browser, or to the Web viewer core plugin if that's enabled.
 - **Settings:** settings are declared with `getSettingDefinitions()` (Obsidian 1.13+), which makes them show up in settings search. A `display()` fallback renders the same definitions on older versions. Labels use sentence case.
 - **Secrets:** the API key lives in `app.secretStorage` (Obsidian 1.11.4+). The settings only store the secret's name. This is why `minAppVersion` is 1.11.4.

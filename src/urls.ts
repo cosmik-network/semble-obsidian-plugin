@@ -50,3 +50,26 @@ export function sembleCollectionUrl(handle: string, atUri: string | undefined): 
 	if (!rkey || !atUri?.startsWith("at://")) return null;
 	return `${sembleProfileUrl(handle)}/collections/${encodeURIComponent(rkey)}`;
 }
+
+/**
+ * Semble's page for a web link. Every link the plugin opens goes here rather
+ * than to the site itself, except links to Semble collections, which open as
+ * they are.
+ */
+export function sembleUrlPage(url: string): string {
+	return isSembleCollectionUrl(url) ? url : `${SEMBLE_WEB}/url?id=${encodeURIComponent(url)}`;
+}
+
+/** A Semble collection page: semble.so/profile/<handle>/collections/<rkey>. */
+function isSembleCollectionUrl(url: string): boolean {
+	try {
+		const { hostname, pathname } = new URL(url);
+		const host = hostname.toLowerCase();
+		return (
+			(host === "semble.so" || host === "www.semble.so") &&
+			/^\/profile\/[^/]+\/collections\/[^/]+\/?$/.test(pathname)
+		);
+	} catch {
+		return false;
+	}
+}
