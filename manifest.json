@@ -3,8 +3,8 @@
 	"name": "Semble",
 	"version": "0.1.0",
 	"minAppVersion": "1.11.4",
-	"description": "List every web link in the current note in a sidebar pane.",
-	"author": "Cosmik",
+	"description": "List every web link in the current note in a sidebar pane. Interact with each one as you would in Semble.",
+	"author": "Cosmik Network",
 	"authorUrl": "https://cosmik.network",
 	"isDesktopOnly": false
 }

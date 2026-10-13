@@ -60,15 +60,6 @@
 	min-width: 0;
 }
 
-.semble-row-thumb {
-	flex-shrink: 0;
-	width: 40px;
-	height: 40px;
-	border-radius: var(--radius-s);
-	object-fit: cover;
-	background-color: var(--background-modifier-hover);
-}
-
 .semble-row-title,
 .semble-row-detail {
 	overflow: hidden;

@@ -152,8 +152,6 @@ export class ConnectionsPanel extends Panel {
 		renderRow(thisEl, {
 			title: metadata?.title || ctx.link.displayText,
 			detail: hostOf(ctx.link.url) ?? ctx.link.url,
-			thumbnailUrl: metadata?.imageUrl,
-			flair: "This link",
 		});
 
 		const middleEl = createDiv({ cls: "semble-connection-middle" });

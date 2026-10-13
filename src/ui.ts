@@ -43,8 +43,6 @@ export interface RowOptions {
 	detail?: string;
 	/** Right-aligned count or label, like the counts in Outline and Backlinks. */
 	flair?: string;
-	/** Small rounded preview image on the right, like the extension's cards. */
-	thumbnailUrl?: string;
 	tooltip?: string;
 	onClick?: (evt: MouseEvent) => void;
 	onContextMenu?: (evt: MouseEvent) => void;
@@ -78,7 +76,6 @@ export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLEleme
 	innerEl.createDiv({ cls: "semble-row-title", text: options.title });
 	if (options.detail) innerEl.createDiv({ cls: "semble-row-detail", text: options.detail });
 
-	if (options.thumbnailUrl) renderThumbnail(selfEl, options.thumbnailUrl, "semble-row-thumb");
 	if (options.flair) {
 		selfEl.createDiv({ cls: "tree-item-flair-outer" }).createSpan({ cls: "tree-item-flair", text: options.flair });
 	}
@@ -134,11 +131,6 @@ export function setSavesFlair(itemEl: HTMLElement, saves: number, inLibrary: boo
 	} else {
 		setRowFlair(itemEl, null);
 	}
-}
-
-export function renderThumbnail(parentEl: HTMLElement, src: string, cls: string): void {
-	const img = parentEl.createEl("img", { cls, attr: { src, alt: "", loading: "lazy", referrerpolicy: "no-referrer" } });
-	img.addEventListener("error", () => img.remove());
 }
 
 /**
