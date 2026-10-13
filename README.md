@@ -26,7 +26,7 @@ The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, s
 Clicking a link in the list opens a view for that link. It's laid out like Semble's browser extension but built from Obsidian's own toolbar buttons, list rows and inputs. The parts, from top to bottom:
 
 - **Toolbar:** buttons to go back to the list, reload the link's data from Semble, jump to the link in the note, and open the link.
-- **Header:** the site, a *Saved* marker if the link is in your library, the title, the description and a thumbnail.
+- **Header:** the site, a *Saved* marker if the link is in your library, the title and the description.
 - **Stats:** saves, collections and connections. Each count works like an extra tab. Clicking it shows its list in the area below the tab bar and highlights the count:
   - **Saves** shows *Saved by*. Click someone to open their Semble profile, `semble.so/profile/<handle>`.
   - **Collections** shows *In collections*, with each collection's card count, owner and last update. Click one to open it on Semble, at `semble.so/profile/<owner handle>/collections/<rkey>`, where `rkey` is the last segment of the collection's AT URI.
@@ -36,7 +36,7 @@ Clicking a link in the list opens a view for that link. It's laid out like Sembl
 - **Tabs:** Add, Related and Connections. Links reopen on the tab, or stat list, you last used.
   - **Add**: tick collections and add a note, then **Add to library**, or **Update** if the link is already saved. The buttons above the list switch between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If nothing matches, it offers to create a collection with that name. **Remove** takes the link out of your library.
   - **Related**: a compact list of links that Semble considers similar. Each row shows the title and site, and *Saved* if the link is in your library. Hover for the full URL. Buttons above the list filter by type (article, book, video, and so on).
-  - **Connections**: typed connections such as *Supports*, *Opposes* or *Related*. The arrow shows the direction, and each row shows the type, the site and who made it. Click a row to open the other link. Right-click one of your own connections to delete it. **Add connection…** opens a form laid out like the extension's:
+  - **Connections**: typed connections such as *Supports*, *Opposes* or *Related*. Each row shows the linked page's title, then the type, the site and who made it. Hover a row for the URL, the direction and any note. Click a row to open the other link. Right-click one of your own connections to delete it. **Add connection…**, at the top of the list, opens a form laid out like the extension's:
     - This link at the top, a connection-type dropdown in the middle, and the other link below. The swap button reverses the direction.
     - The other link's field suggests the note's other web links, or you can paste any URL.
     - An optional note.

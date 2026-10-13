@@ -2,7 +2,7 @@ import { Component, setIcon } from "obsidian";
 import { API_KEYS_URL, COLLECTION_LISTS, type UrlInfo } from "../api";
 import type { WebLink } from "../links";
 import type SemblePlugin from "../main";
-import { errorText, openUrl, plural, renderThumbnail, renderToggleGroup, type ToggleGroup } from "../ui";
+import { errorText, openUrl, plural, renderToggleGroup, type ToggleGroup } from "../ui";
 import { hostOf, sameUrl } from "../urls";
 import { ConnectionsPanel } from "./ConnectionsPanel";
 import type { DetailContext, Panel } from "./context";
@@ -147,7 +147,7 @@ export class LinkDetail extends Component {
 		this.renderHeader();
 	}
 
-	/** Site, title, description and thumbnail, then the stats, as in the extension. */
+	/** Site, title and description, then the stats, as in the extension. */
 	private renderHeader(): void {
 		const { headerEl, link, info } = this;
 		headerEl.empty();
@@ -164,7 +164,6 @@ export class LinkDetail extends Component {
 		}
 		textEl.createDiv({ cls: "semble-detail-title", text: metadata?.title || link.displayText });
 		if (metadata?.description) textEl.createDiv({ cls: "semble-detail-desc", text: metadata.description });
-		if (metadata?.imageUrl) renderThumbnail(topEl, metadata.imageUrl, "semble-detail-thumb");
 
 		if (this.infoError) headerEl.createDiv({ cls: "semble-detail-error", text: this.infoError });
 		if (!info?.stats) return;

@@ -48,19 +48,18 @@ export class ConnectionsPanel extends Panel {
 	private showList(): void {
 		const request = ++this.request;
 		this.containerEl.empty();
+		// First, and available right away, so adding a connection never waits on the list.
+		renderRow(this.containerEl, { icon: "plus", title: "Add connection…", onClick: () => this.showCreate() });
 		const listEl = this.containerEl.createDiv();
 		const loadingEl = renderMessage(listEl, "Loading…");
-
-		const addRow = () =>
-			renderRow(listEl, { icon: "plus", title: "Add connection…", onClick: () => this.showCreate() });
 
 		this.ctx.api
 			.getConnections(this.ctx.link.url)
 			.then(({ connections }) => {
 				if (!this.alive || request !== this.request) return;
 				loadingEl.remove();
+				if (connections.length === 0) renderMessage(listEl, "No connections yet.");
 				for (const connection of connections) this.renderConnection(listEl, connection);
-				addRow();
 			})
 			.catch((err: unknown) => {
 				if (!this.alive || request !== this.request) return;
@@ -74,13 +73,12 @@ export class ConnectionsPanel extends Panel {
 		const other = outgoing ? item.target : item.source;
 		const { connection } = item;
 
+		// Compact row: title, then type, site and curator. Direction and note are in the tooltip.
+		const direction = outgoing ? "This link → linked page" : "Linked page → this link";
 		renderRow(parentEl, {
-			icon: outgoing ? "arrow-right" : "arrow-left",
 			title: other.metadata.title || other.url,
 			detail: `${connectionLabel(connection.type)} · ${hostOf(other.url) ?? other.url} · @${connection.curator.handle}`,
-			note: connection.note,
-			thumbnailUrl: other.metadata.imageUrl,
-			tooltip: other.url,
+			tooltip: [other.url, direction, connection.note].filter(Boolean).join("\n"),
 			onClick: () => openUrl(other.url),
 			onContextMenu: (evt) => {
 				const menu = new Menu();

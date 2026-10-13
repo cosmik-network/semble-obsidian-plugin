@@ -35,8 +35,6 @@ export interface RowOptions {
 	title: string;
 	/** Faint second line, e.g. a host name. */
 	detail?: string;
-	/** Muted, wrapped text under the detail line, e.g. a note. */
-	note?: string;
 	/** Right-aligned count or label, like the counts in Outline and Backlinks. */
 	flair?: string;
 	/** Small rounded preview image on the right, like the extension's cards. */
@@ -73,7 +71,6 @@ export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLEleme
 	const innerEl = selfEl.createDiv({ cls: "tree-item-inner" });
 	innerEl.createDiv({ cls: "semble-row-title", text: options.title });
 	if (options.detail) innerEl.createDiv({ cls: "semble-row-detail", text: options.detail });
-	if (options.note) innerEl.createDiv({ cls: "semble-row-note", text: options.note });
 
 	if (options.thumbnailUrl) renderThumbnail(selfEl, options.thumbnailUrl, "semble-row-thumb");
 	if (options.flair) {

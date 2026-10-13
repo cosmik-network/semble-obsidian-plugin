@@ -94,16 +94,6 @@
 	line-height: var(--line-height-tight);
 }
 
-.semble-row-note {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	overflow: hidden;
-	margin-top: var(--size-2-1);
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-}
-
 .semble-row input[type="checkbox"] {
 	flex-shrink: 0;
 	margin: 2px 0 0;
@@ -183,15 +173,6 @@
 	overflow: hidden;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-}
-
-.semble-detail-thumb {
-	flex-shrink: 0;
-	width: 56px;
-	height: 56px;
-	border-radius: var(--radius-m);
-	object-fit: cover;
-	background-color: var(--background-modifier-hover);
 }
 
 .semble-detail-error {
