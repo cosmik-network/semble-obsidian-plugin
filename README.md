@@ -24,7 +24,7 @@ Your key is stored in Obsidian's Keychain, not in the plugin's settings file, so
 
 ### Open the pane
 
-Click the Semble icon (a stack of stones) in the ribbon, or run **Semble: Show web links in current note** from the command palette. The pane opens in the right sidebar. You can move it anywhere, like any other pane.
+When you first enable the plugin, it adds its pane to the right sidebar. Look for the Semble icon, a stack of stones, among the sidebar's tabs. You can move the pane anywhere, like any other pane. If you close it, click the same icon in the ribbon, or run **Semble: Show web links in current note** from the command palette, to bring it back.
 
 ## The link list
 

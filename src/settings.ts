@@ -9,10 +9,17 @@ export interface SembleSettings {
 	 * The key itself is never written to data.json.
 	 */
 	apiKeySecret: string;
+	/**
+	 * Whether the links pane has been added to the right sidebar on first run.
+	 * Internal state, not shown in the settings tab: it stops the pane from
+	 * coming back on every startup after the user closes it.
+	 */
+	paneAdded: boolean;
 }
 
 export const DEFAULT_SETTINGS: SembleSettings = {
 	apiKeySecret: "",
+	paneAdded: false,
 };
 
 type SettingKey = keyof SembleSettings;

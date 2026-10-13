@@ -22,6 +22,22 @@ export default class SemblePlugin extends Plugin {
 		});
 
 		this.addSettingTab(new SembleSettingTab(this.app, this));
+
+		// Wait for the workspace to be restored, so an existing pane is found rather than duplicated.
+		this.app.workspace.onLayoutReady(() => void this.addPaneOnFirstRun());
+	}
+
+	/**
+	 * Put the pane in the right sidebar the first time the plugin runs, without
+	 * switching to it, so its icon is there from the start. Obsidian keeps it
+	 * in the workspace layout from then on; if the user closes it, it stays
+	 * closed (the ribbon icon and command bring it back).
+	 */
+	private async addPaneOnFirstRun(): Promise<void> {
+		if (this.settings.paneAdded) return;
+		await this.app.workspace.ensureSideLeaf(VIEW_TYPE_LINKS, "right", { active: false, reveal: false });
+		this.settings.paneAdded = true;
+		await this.saveData(this.settings);
 	}
 
 	// Leaves are deliberately not detached on unload: Obsidian restores the pane
@@ -29,14 +45,7 @@ export default class SemblePlugin extends Plugin {
 
 	/** Reveal the links pane, creating it in the right sidebar if it isn't open yet. */
 	async activateView(): Promise<void> {
-		const { workspace } = this.app;
-		let leaf = workspace.getLeavesOfType(VIEW_TYPE_LINKS)[0] ?? null;
-		if (!leaf) {
-			leaf = workspace.getRightLeaf(false);
-			if (!leaf) return;
-			await leaf.setViewState({ type: VIEW_TYPE_LINKS, active: true });
-		}
-		await workspace.revealLeaf(leaf);
+		await this.app.workspace.ensureSideLeaf(VIEW_TYPE_LINKS, "right", { active: true, reveal: true });
 	}
 
 	/** The API key from Obsidian's secret storage, or null if none is configured. */
@@ -58,7 +67,10 @@ export default class SemblePlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const data = (await this.loadData()) as Partial<SembleSettings> | null;
 		// Only keep known keys, so options removed in earlier versions drop out of data.json.
-		this.settings = { apiKeySecret: data?.apiKeySecret ?? DEFAULT_SETTINGS.apiKeySecret };
+		this.settings = {
+			apiKeySecret: data?.apiKeySecret ?? DEFAULT_SETTINGS.apiKeySecret,
+			paneAdded: data?.paneAdded ?? DEFAULT_SETTINGS.paneAdded,
+		};
 	}
 
 	async saveSettings(): Promise<void> {

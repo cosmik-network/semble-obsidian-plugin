@@ -106,6 +106,7 @@ Entries are matched with `sameUrl()`, because Semble normalizes URLs: for exampl
 
 ## Obsidian best practices followed
 
+- **First run:** once the workspace layout is ready, the plugin adds its pane to the right sidebar with `ensureSideLeaf()`, without switching to it, so its tab icon is there from the start. A `paneAdded` flag in `data.json` makes this happen only once. After that, Obsidian's saved layout decides where the pane is, and a closed pane stays closed.
 - **Views:** the plugin never keeps references to its view. It looks them up with `getLeavesOfType()` and checks `instanceof LinksView`, because leaves can be deferred since 1.7. It doesn't detach leaves in `onunload()`, so the pane stays in place when the plugin is updated.
 - **Cleanup:** every listener is attached with `registerEvent` / `register*`, so it's removed automatically when the view closes or the plugin unloads.
 - **Native UI:** the plugin uses Obsidian's own building blocks instead of custom widgets, so it looks right in any theme:
