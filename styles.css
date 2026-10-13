@@ -129,14 +129,8 @@
 .semble-detail-header {
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-4-2);
-	padding: var(--size-4-2) var(--size-4-2) var(--size-4-3);
-}
-
-.semble-detail-top {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--size-4-3);
+	gap: var(--size-2-3);
+	padding: var(--size-2-3) var(--size-4-2) var(--size-4-3);
 }
 
 .semble-detail-text {
@@ -147,12 +141,30 @@
 	gap: var(--size-2-1);
 }
 
-.semble-detail-site {
+/* Back, site and actions on one row. The outer buttons pull out by their
+   padding so their icons line up with the text below. */
+.semble-detail-bar {
 	display: flex;
 	align-items: center;
+	gap: var(--size-2-1);
+	margin: 0 calc(-1 * var(--size-2-3));
+	--icon-size: var(--icon-s);
+}
+
+.semble-detail-site {
+	display: flex;
+	flex: 1;
+	align-items: center;
 	gap: var(--size-4-2);
+	min-width: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
+}
+
+.semble-detail-host {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .semble-saved {

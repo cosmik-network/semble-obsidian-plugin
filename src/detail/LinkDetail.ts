@@ -80,7 +80,6 @@ export class LinkDetail extends Component {
 
 	onload(): void {
 		this.alive = true;
-		this.renderNav();
 		const scrollEl = this.containerEl.createDiv({ cls: "semble-detail-scroll" });
 		this.headerEl = scrollEl.createDiv({ cls: "semble-detail-header" });
 
@@ -131,22 +130,6 @@ export class LinkDetail extends Component {
 		this.showView(this.view, true);
 	}
 
-	/** Core nav-header markup, the same toolbar Outline and Backlinks use. */
-	private renderNav(): void {
-		const buttonsEl = this.containerEl
-			.createDiv({ cls: "nav-header" })
-			.createDiv({ cls: "nav-buttons-container" });
-		const button = (icon: string, label: string, onClick: () => void) => {
-			const el = buttonsEl.createDiv({ cls: "clickable-icon nav-action-button", attr: { "aria-label": label } });
-			setIcon(el, icon);
-			el.addEventListener("click", onClick);
-		};
-
-		button("arrow-left", "Back to links", () => this.host.back());
-		button("text-cursor", "Jump to link in note", () => this.host.revealInNote(this.link));
-		button("external-link", "Open on Semble", () => openLink(this.link.url));
-	}
-
 	private async loadInfo(): Promise<void> {
 		this.infoError = null;
 		try {
@@ -166,15 +149,25 @@ export class LinkDetail extends Component {
 		headerEl.empty();
 		const metadata = info?.metadata;
 
-		const topEl = headerEl.createDiv({ cls: "semble-detail-top" });
-		const textEl = topEl.createDiv({ cls: "semble-detail-text" });
-		const siteEl = textEl.createDiv({ cls: "semble-detail-site" });
-		siteEl.createSpan({ text: hostOf(link.url) ?? link.url });
+		// One compact bar: back on the left, the site in the middle, actions on the right.
+		const barEl = headerEl.createDiv({ cls: "semble-detail-bar" });
+		const button = (icon: string, label: string, onClick: () => void) => {
+			const el = barEl.createDiv({ cls: "clickable-icon", attr: { "aria-label": label } });
+			setIcon(el, icon);
+			el.addEventListener("click", onClick);
+		};
+		button("arrow-left", "Back to links", () => this.host.back());
+		const siteEl = barEl.createDiv({ cls: "semble-detail-site" });
+		siteEl.createSpan({ cls: "semble-detail-host", text: hostOf(link.url) ?? link.url });
 		if (info?.urlInLibrary) {
 			const savedEl = siteEl.createSpan({ cls: "semble-saved", attr: { "aria-label": "In your library" } });
 			setIcon(savedEl, "check");
 			savedEl.createSpan({ text: "Saved" });
 		}
+		button("text-cursor", "Jump to link in note", () => this.host.revealInNote(link));
+		button("external-link", "Open on Semble", () => openLink(link.url));
+
+		const textEl = headerEl.createDiv({ cls: "semble-detail-text" });
 		textEl.createDiv({ cls: "semble-detail-title", text: metadata?.title || link.displayText });
 		if (metadata?.description) textEl.createDiv({ cls: "semble-detail-desc", text: metadata.description });
 

@@ -48,8 +48,8 @@ Links open on their Semble page (`semble.so/url?id=…`) rather than on the site
 
 Clicking a link shows it as it is on Semble:
 
-- **Toolbar:** go back to the list, jump to the link in your note, or open it on Semble.
-- **Header:** the site, the title and description, and a checkmark if it's in your library.
+- **Top bar:** a back arrow to return to the list, the site (with a checkmark if the link is in your library), and buttons to jump to the link in your note or open it on Semble.
+- **Header:** the title and description.
 - **Stats:** how many saves, collections and connections it has. Click **saves** to see who saved it, or **collections** to see which collections it's in. Click a person or a collection to open them on Semble. Click **connections** to go to the Connections tab.
 
 Below the header are three tabs. Each link opens on the tab you used last.

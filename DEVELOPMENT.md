@@ -37,7 +37,7 @@ src/
   icon.ts                 The Semble logo as an outline icon, for the ribbon, the pane's tab and settings search
   urls.ts                 Pure URL helpers: host names, validation, URL comparison, semble.so page links
   detail/
-    LinkDetail.ts         The link view: toolbar, header with stats, tabs
+    LinkDetail.ts         The link view: top bar, header with stats, tabs
     context.ts            DetailContext shared by the panels; Panel and PagedPanel base classes
     LibraryPanel.ts       Add tab: collections, note, add/update and remove
     ConnectionsPanel.ts   Connections tab: connection list and the add-connection form
@@ -110,7 +110,7 @@ Entries are matched with `sameUrl()`, because Semble normalizes URLs: for exampl
 - **Cleanup:** every listener is attached with `registerEvent` / `register*`, so it's removed automatically when the view closes or the plugin unloads.
 - **Native UI:** the plugin uses Obsidian's own building blocks instead of custom widgets, so it looks right in any theme:
     - Every list is built from core `tree-item` rows.
-    - The toolbar is a core `nav-header`. The tabs and filter rows are core `clickable-icon` buttons marked `is-active`, so they pick up the theme's hover and active states.
+    - The link view's top bar puts back on the left and actions on the right, like Obsidian's own back buttons. It uses core `clickable-icon` buttons. The tabs and filter rows are `clickable-icon` buttons too, marked `is-active`, so they pick up the theme's hover and active states.
     - The search box is a `SearchComponent`, the collection picker uses native checkboxes, and actions are standard buttons with `mod-cta` and `mod-warning`.
     - Confirmations open in a `Modal`. Everything else stays in the sidebar.
     - `styles.css` only adds layout, using theme variables throughout.
