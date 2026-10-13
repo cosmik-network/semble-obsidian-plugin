@@ -1,0 +1,50 @@
+/*
+ * Web links pane. Layout comes from Obsidian's core `.tree-item` classes (shared
+ * with Outline and Backlinks); these rules only add what those lack. Use theme
+ * variables rather than hard-coded colours so themes and dark mode just work.
+ */
+
+.semble-links-view {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.semble-links-search {
+	padding: var(--size-4-2) var(--size-4-3);
+}
+
+.semble-links-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: 0 var(--size-4-2) var(--size-4-3);
+}
+
+.semble-links-item .tree-item-self {
+	align-items: flex-start;
+	gap: var(--size-4-2);
+}
+
+.semble-links-item-icon {
+	display: flex;
+	flex-shrink: 0;
+	padding-top: 2px;
+	color: var(--icon-color);
+	--icon-size: var(--icon-xs);
+}
+
+.semble-links-item .tree-item-inner {
+	min-width: 0;
+}
+
+.semble-links-item-title,
+.semble-links-item-detail {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semble-links-item-detail {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
