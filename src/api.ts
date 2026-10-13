@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { sameUrl } from "./urls";
 
 /*
  * Minimal typed client for the parts of the Semble XRPC API the plugin uses.
@@ -8,6 +9,15 @@ import { requestUrl } from "obsidian";
 const BASE_URL = "https://api.semble.so/xrpc";
 /** Identifies this integration to Semble via the optional X-Semble-Client header. */
 const CLIENT_ID = "obsidian";
+
+/** How long a GET response is reused before it's fetched again. */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export const COLLECTION_LISTS = [
+	"network.cosmik.collection.listMine",
+	"network.cosmik.collection.search",
+	"network.cosmik.collection.getRecommendedForUrl",
+];
 
 export const API_KEYS_URL = "https://semble.so/settings/api-keys";
 
@@ -119,8 +129,24 @@ export class SembleApiError extends Error {
 
 type Query = Record<string, string | number | boolean | undefined>;
 
+interface CacheEntry {
+	method: string;
+	/** The `url` query param, so entries about a URL can be invalidated together. */
+	url?: string;
+	expires: number;
+	value: Promise<unknown>;
+}
+
+/**
+ * GET responses are cached in memory for a few minutes, so reopening a link's
+ * view renders instantly. Caching the promise also shares identical requests
+ * that are in flight. Mutations invalidate the entries they affect, and the
+ * whole cache is dropped when the API key changes.
+ */
 export class SembleClient {
-	private profile: Promise<User> | null = null;
+	private readonly cache = new Map<string, CacheEntry>();
+	/** The key the cache was filled with. */
+	private cacheKey: string | null = null;
 
 	/** `getApiKey` is read on every request so key changes apply immediately. */
 	constructor(private readonly getApiKey: () => string | null) {}
@@ -129,19 +155,21 @@ export class SembleClient {
 		return Boolean(this.getApiKey());
 	}
 
-	/** Forget cached per-account data, e.g. after the API key changes. */
-	reset(): void {
-		this.profile = null;
+	/**
+	 * Drop cached responses about any of `urls` (matched by their `url`
+	 * param) and every cached response from `methods`.
+	 */
+	invalidate({ urls = [], methods = [] }: { urls?: string[]; methods?: string[] }): void {
+		for (const [key, entry] of this.cache) {
+			const aboutUrl = entry.url !== undefined && urls.some((url) => sameUrl(url, entry.url!));
+			if (aboutUrl || methods.includes(entry.method)) this.cache.delete(key);
+		}
 	}
 
 	// --- Account ---
 
 	getMyProfile(): Promise<User> {
-		this.profile ??= this.get<User>("network.cosmik.actor.getMyProfile").catch((err: unknown) => {
-			this.profile = null;
-			throw err;
-		});
-		return this.profile;
+		return this.get("network.cosmik.actor.getMyProfile");
 	}
 
 	// --- URLs and library ---
@@ -159,21 +187,21 @@ export class SembleClient {
 		}
 	}
 
+	// Library changes affect this URL's stats and status, and collection card counts.
+
 	addUrl(body: { url: string; note?: string; collectionIds?: string[] }): Promise<{ urlCardId: string }> {
-		return this.post("network.cosmik.card.addUrl", body);
+		return this.post("network.cosmik.card.addUrl", body, { urls: [body.url], methods: COLLECTION_LISTS });
 	}
 
-	updateUrlAssociations(body: {
-		cardId: string;
-		note?: string;
-		addToCollections?: string[];
-		removeFromCollections?: string[];
-	}): Promise<unknown> {
-		return this.post("network.cosmik.card.updateUrlAssociations", body);
+	updateUrlAssociations(
+		url: string,
+		body: { cardId: string; note?: string; addToCollections?: string[]; removeFromCollections?: string[] },
+	): Promise<unknown> {
+		return this.post("network.cosmik.card.updateUrlAssociations", body, { urls: [url], methods: COLLECTION_LISTS });
 	}
 
-	removeFromLibrary(cardId: string): Promise<unknown> {
-		return this.post("network.cosmik.card.removeFromLibrary", { cardId });
+	removeFromLibrary(url: string, cardId: string): Promise<unknown> {
+		return this.post("network.cosmik.card.removeFromLibrary", { cardId }, { urls: [url], methods: COLLECTION_LISTS });
 	}
 
 	getSimilarUrls(
@@ -207,7 +235,7 @@ export class SembleClient {
 	}
 
 	createCollection(name: string): Promise<{ collectionId: string }> {
-		return this.post("network.cosmik.collection.create", { name });
+		return this.post("network.cosmik.collection.create", { name }, { methods: COLLECTION_LISTS });
 	}
 
 	// --- Connections ---
@@ -228,18 +256,23 @@ export class SembleClient {
 		connectionType: ConnectionType;
 		note?: string;
 	}): Promise<{ connectionId: string }> {
-		return this.post("network.cosmik.connection.create", {
-			sourceType: "URL",
-			sourceValue: body.sourceUrl,
-			targetType: "URL",
-			targetValue: body.targetUrl,
-			connectionType: body.connectionType,
-			note: body.note,
-		});
+		return this.post(
+			"network.cosmik.connection.create",
+			{
+				sourceType: "URL",
+				sourceValue: body.sourceUrl,
+				targetType: "URL",
+				targetValue: body.targetUrl,
+				connectionType: body.connectionType,
+				note: body.note,
+			},
+			{ urls: [body.sourceUrl, body.targetUrl] },
+		);
 	}
 
-	deleteConnection(connectionId: string): Promise<unknown> {
-		return this.post("network.cosmik.connection.delete", { connectionId });
+	/** `urls` are the connection's two ends, whose cached connections and stats go stale. */
+	deleteConnection(connectionId: string, urls: string[]): Promise<unknown> {
+		return this.post("network.cosmik.connection.delete", { connectionId }, { urls });
 	}
 
 	// --- Transport ---
@@ -250,11 +283,42 @@ export class SembleClient {
 			if (value !== undefined) params.set(key, String(value));
 		}
 		const qs = params.toString();
-		return this.request<T>("GET", `${method}${qs ? `?${qs}` : ""}`);
+		const path = `${method}${qs ? `?${qs}` : ""}`;
+
+		const apiKey = this.getApiKey();
+		if (apiKey !== this.cacheKey) {
+			// Different key, possibly a different account: nothing cached still applies.
+			this.cache.clear();
+			this.cacheKey = apiKey;
+		}
+
+		const now = Date.now();
+		const hit = this.cache.get(path);
+		if (hit && hit.expires > now) return hit.value as Promise<T>;
+
+		const value = this.request<T>("GET", path);
+		const entry: CacheEntry = {
+			method,
+			url: typeof query.url === "string" ? query.url : undefined,
+			expires: now + CACHE_TTL_MS,
+			value,
+		};
+		this.cache.set(path, entry);
+		// Never cache failures; the caller still sees the rejection.
+		value.catch(() => {
+			if (this.cache.get(path) === entry) this.cache.delete(path);
+		});
+		return value;
 	}
 
-	private post<T>(method: string, body: object): Promise<T> {
-		return this.request<T>("POST", method, JSON.stringify(body));
+	private async post<T>(
+		method: string,
+		body: object,
+		invalidates: { urls?: string[]; methods?: string[] } = {},
+	): Promise<T> {
+		const result = await this.request<T>("POST", method, JSON.stringify(body));
+		this.invalidate(invalidates);
+		return result;
 	}
 
 	private async request<T>(httpMethod: "GET" | "POST", path: string, body?: string): Promise<T> {

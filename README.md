@@ -23,7 +23,7 @@ The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, s
 
 ### The link view
 
-Clicking a link in the list opens a view for that link, laid out like Semble's browser extension. The header shows the site, title, description, thumbnail, an **In library** badge, and counts of saves, collections and connections. The back arrow returns to the list, and the icons next to it jump to the link in the note or open it in your browser. There are three tabs:
+Clicking a link in the list opens a view for that link, laid out like Semble's browser extension. The header shows the site, title, description, thumbnail, an **In library** badge, and counts of saves, collections and connections. The back arrow returns to the list. The icons next to it reload the link's data from Semble, jump to the link in the note, or open it in your browser. Links reopen on the tab you last used. There are three tabs:
 
 - **Add / Update**: choose collections and write a note, then **Add to library**, or **Update** if the link is already saved. You can switch the collection list between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If no collection matches, it offers to create one with that name. The trash button removes the link from your library.
 - **Related**: links that Semble considers similar, filtered by type (article, book, video, and so on). Click one to open it.
@@ -69,7 +69,8 @@ src/
   links.ts                Pure web link extraction: no runtime Obsidian imports, so it's unit tested in Node
   api.ts                  Typed Semble API client built on Obsidian's requestUrl
   settings.ts             Settings interface, defaults and settings tab (API key secret, pane options)
-  ui.ts                   Shared helpers: URL cards, filter chips, confirm modal, URL comparison
+  ui.ts                   Shared UI helpers: URL cards, filter chips, confirm modal
+  urls.ts                 Pure URL helpers: host names, validation, Semble-style URL comparison
   detail/
     LinkDetail.ts         The link view: navigation bar, header with metadata and stats, tab switching
     context.ts            DetailContext shared by the tabs, and the Panel base class
@@ -77,7 +78,7 @@ src/
     RelatedTab.ts         Related links, filtered by type
     ConnectionsTab.ts     Connection list and the create-connection form
 tests/
-  links.test.ts  api.test.ts  ui.test.ts
+  links.test.ts  api.test.ts  urls.test.ts
 styles.css      Pane styles; Obsidian loads this automatically
 manifest.json   Plugin metadata read by Obsidian
 versions.json   Maps each plugin version to its minimum Obsidian version
@@ -101,7 +102,15 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 **The link view.** `LinksView` keeps the list in the DOM and hides it while a link is open, so the filter and scroll position survive going back. `LinkDetail` is a `Component` added as a child of the view. Each tab is also a child `Component`, a subclass of `Panel`, so switching tabs, going back, or closing the pane unloads it and its listeners. Tabs load data asynchronously and check an `alive` flag, plus a request counter where a request can be repeated, before rendering. This drops responses that arrive after you've moved on. Switching to another note returns to the list, and changing settings rebuilds an open link view.
 
-**Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately. 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
+**Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
+
+**Caching.** GET responses are cached in memory for 5 minutes, keyed by method and query. Going back to the list and reopening a link, or switching between its tabs, renders from the cache without any loading state. The client caches the promise, not just the result, so identical requests that are already in flight are shared. Failed requests are never cached. Each mutation clears what it makes stale:
+
+- Adding, updating or removing a library card clears that URL's entries and the collection lists.
+- Creating a collection clears the collection lists.
+- Creating or deleting a connection clears entries for both of its URLs.
+
+Entries are matched with `sameUrl()`, so normalized URLs still match. A different API key clears the whole cache. The reload button in the link view clears the link's entries so changes made elsewhere, such as on semble.so, show up straight away. 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
 
 | Where                     | Endpoints                                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------ |

@@ -1,19 +1,23 @@
 import { Component, setIcon } from "obsidian";
-import { API_KEYS_URL, type UrlInfo } from "../api";
+import { API_KEYS_URL, COLLECTION_LISTS, type UrlInfo } from "../api";
 import type { WebLink } from "../links";
 import type SemblePlugin from "../main";
-import { errorText, hostOf, openUrl, plural, renderThumbnail, sameUrl } from "../ui";
+import { errorText, openUrl, plural, renderThumbnail } from "../ui";
+import { hostOf, sameUrl } from "../urls";
 import { ConnectionsTab } from "./ConnectionsTab";
 import type { DetailContext, Panel } from "./context";
 import { LibraryTab } from "./LibraryTab";
 import { RelatedTab } from "./RelatedTab";
 
-type TabId = "library" | "related" | "connections";
+export type TabId = "library" | "related" | "connections";
 
 export interface LinkDetailHost {
 	back(): void;
 	revealInNote(link: WebLink): void;
 	noteLinks(): WebLink[];
+	/** The tab to start on, and a callback to remember the user's choice. */
+	initialTab: TabId;
+	onTabChange(tab: TabId): void;
 }
 
 /**
@@ -23,7 +27,7 @@ export interface LinkDetailHost {
 export class LinkDetail extends Component {
 	private info: UrlInfo | null = null;
 	private infoError: string | null = null;
-	private tab: TabId = "library";
+	private tab: TabId;
 	private panel: Panel | null = null;
 	private alive = false;
 
@@ -39,6 +43,7 @@ export class LinkDetail extends Component {
 		private readonly host: LinkDetailHost,
 	) {
 		super();
+		this.tab = host.initialTab;
 		this.ctx = {
 			app: plugin.app,
 			api: plugin.api,
@@ -86,6 +91,15 @@ export class LinkDetail extends Component {
 		backEl.addEventListener("click", () => this.host.back());
 
 		navEl.createDiv({ cls: "semble-spacer" });
+		if (this.plugin.api.hasApiKey) {
+			const reloadEl = navEl.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Reload from Semble" } });
+			setIcon(reloadEl, "refresh-cw");
+			reloadEl.addEventListener("click", () => {
+				// Responses are cached for a few minutes; this fetches fresh ones for this link.
+				this.plugin.api.invalidate({ urls: [this.link.url], methods: COLLECTION_LISTS });
+				this.refresh();
+			});
+		}
 		const revealEl = navEl.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Jump to link in note" } });
 		setIcon(revealEl, "text-cursor");
 		revealEl.addEventListener("click", () => this.host.revealInNote(this.link));
@@ -171,6 +185,7 @@ export class LinkDetail extends Component {
 
 	private showTab(id: TabId): void {
 		this.tab = id;
+		this.host.onTabChange(id);
 		this.renderTabs();
 		if (this.panel) this.removeChild(this.panel);
 		this.bodyEl.empty();

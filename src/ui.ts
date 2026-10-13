@@ -1,44 +1,10 @@
 import { App, Modal, Setting, setIcon } from "obsidian";
 import type { UrlMetadata } from "./api";
-
-/** Hostname without a leading "www.", or null if the URL can't be parsed. */
-export function hostOf(url: string): string | null {
-	try {
-		return new URL(url).host.replace(/^www\./, "") || null;
-	} catch {
-		return null;
-	}
-}
+import { hostOf } from "./urls";
 
 /** Obsidian routes window.open for http(s) URLs to the system browser (or Web viewer, if enabled). */
 export function openUrl(url: string): void {
 	window.open(url);
-}
-
-/**
- * Compare URLs the way Semble does: it normalizes them (e.g. adds a trailing
- * slash to bare domains), so an exact string match isn't reliable.
- */
-export function sameUrl(a: string, b: string): boolean {
-	return normalizeUrl(a) === normalizeUrl(b);
-}
-
-function normalizeUrl(value: string): string {
-	try {
-		const url = new URL(value);
-		return `${url.protocol}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, "")}${url.search}`;
-	} catch {
-		return value;
-	}
-}
-
-export function isHttpUrl(value: string): boolean {
-	try {
-		const { protocol } = new URL(value);
-		return protocol === "http:" || protocol === "https:";
-	} catch {
-		return false;
-	}
 }
 
 export function errorText(err: unknown): string {

@@ -267,7 +267,7 @@ export class LibraryTab extends Panel {
 			} else {
 				const added = [...this.selected].filter((id) => !this.initialSelected.has(id));
 				const removed = [...this.initialSelected].filter((id) => !this.selected.has(id));
-				await api.updateUrlAssociations({
+				await api.updateUrlAssociations(link.url, {
 					cardId: this.card.id,
 					note: this.note !== this.initialNote ? this.note : undefined,
 					addToCollections: added.length ? added : undefined,
@@ -292,7 +292,7 @@ export class LibraryTab extends Panel {
 			confirmText: "Remove",
 			onConfirm: async () => {
 				try {
-					await this.ctx.api.removeFromLibrary(card.id);
+					await this.ctx.api.removeFromLibrary(this.ctx.link.url, card.id);
 					new Notice("Removed from your Semble library");
 					this.ctx.refresh();
 				} catch (err) {

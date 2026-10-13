@@ -10,10 +10,11 @@ import {
 	TFile,
 	type WorkspaceLeaf,
 } from "obsidian";
-import { LinkDetail } from "./detail/LinkDetail";
+import { LinkDetail, type TabId } from "./detail/LinkDetail";
 import { collapseDuplicates, extractLinks, type CollapsedLink, type WebLink } from "./links";
 import type SemblePlugin from "./main";
-import { hostOf, openUrl } from "./ui";
+import { openUrl } from "./ui";
+import { hostOf } from "./urls";
 
 export const VIEW_TYPE_LINKS = "semble-links";
 
@@ -35,6 +36,8 @@ export class LinksView extends ItemView {
 	private listEl!: HTMLElement;
 	private detailEl!: HTMLElement;
 	private detail: LinkDetail | null = null;
+	/** Reopen link views on the tab the user last chose. */
+	private detailTab: TabId = "library";
 
 	private readonly requestRefresh = debounce(() => void this.refresh(), 250, true);
 
@@ -134,6 +137,8 @@ export class LinksView extends ItemView {
 				back: () => this.closeDetail(),
 				revealInNote: (target) => void this.revealInNote(target),
 				noteLinks: () => this.links,
+				initialTab: this.detailTab,
+				onTabChange: (tab) => (this.detailTab = tab),
 			}),
 		);
 	}

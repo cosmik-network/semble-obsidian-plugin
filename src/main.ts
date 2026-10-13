@@ -44,7 +44,7 @@ export default class SemblePlugin extends Plugin {
 	}
 
 	async checkConnection(): Promise<void> {
-		this.api.reset();
+		this.api.invalidate({ methods: ["network.cosmik.actor.getMyProfile"] });
 		try {
 			const profile = await this.api.getMyProfile();
 			new Notice(`Connected to Semble as @${profile.handle}`);
@@ -59,7 +59,6 @@ export default class SemblePlugin extends Plugin {
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-		this.api.reset();
 		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_LINKS)) {
 			// Deferred (not yet loaded) leaves render with fresh settings when first shown.
 			if (leaf.view instanceof LinksView) leaf.view.onSettingsChanged();

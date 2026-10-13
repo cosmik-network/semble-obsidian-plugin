@@ -68,14 +68,72 @@ describe("SembleClient", () => {
 		requestUrl.mockResolvedValue({ status: 404, json: {}, text: "" });
 		await expect(new SembleClient(() => "k").getLibraryStatus("https://a.dev")).resolves.toEqual({});
 	});
+});
 
-	it("caches the profile until reset", async () => {
-		requestUrl.mockResolvedValue(ok({ id: "u1", name: "U", handle: "u.bsky.social" }));
+describe("SembleClient cache", () => {
+	beforeEach(() => requestUrl.mockReset());
+
+	const info = (url: string) => ok({ metadata: { url } });
+
+	it("reuses GET responses and shares in-flight requests", async () => {
+		requestUrl.mockResolvedValue(info("https://a.dev"));
 		const client = new SembleClient(() => "k");
-		await client.getMyProfile();
-		await client.getMyProfile();
+		await Promise.all([client.getUrlInfo("https://a.dev"), client.getUrlInfo("https://a.dev")]);
+		await client.getUrlInfo("https://a.dev");
 		expect(requestUrl).toHaveBeenCalledTimes(1);
-		client.reset();
+	});
+
+	it("does not cache failures", async () => {
+		requestUrl.mockResolvedValueOnce({ status: 500, json: {}, text: "" }).mockResolvedValue(info("https://a.dev"));
+		const client = new SembleClient(() => "k");
+		await expect(client.getUrlInfo("https://a.dev")).rejects.toThrow();
+		await expect(client.getUrlInfo("https://a.dev")).resolves.toBeTruthy();
+		expect(requestUrl).toHaveBeenCalledTimes(2);
+	});
+
+	it("expires entries after the TTL", async () => {
+		vi.useFakeTimers();
+		try {
+			requestUrl.mockResolvedValue(info("https://a.dev"));
+			const client = new SembleClient(() => "k");
+			await client.getUrlInfo("https://a.dev");
+			vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+			await client.getUrlInfo("https://a.dev");
+			expect(requestUrl).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("invalidates a URL's entries after a mutation, matching normalized URLs", async () => {
+		requestUrl.mockResolvedValue(info("https://a.dev/"));
+		const client = new SembleClient(() => "k");
+		await client.getUrlInfo("https://a.dev");
+		await client.getUrlInfo("https://b.dev");
+		expect(requestUrl).toHaveBeenCalledTimes(2);
+
+		// Semble reports the connection's ends in normalized form.
+		await client.deleteConnection("c1", ["https://a.dev/", "https://c.dev/"]);
+		await client.getUrlInfo("https://a.dev"); // refetched
+		await client.getUrlInfo("https://b.dev"); // still cached
+		expect(requestUrl).toHaveBeenCalledTimes(4);
+	});
+
+	it("drops collection lists when a collection is created", async () => {
+		requestUrl.mockResolvedValue(ok({ collections: [], collectionId: "x" }));
+		const client = new SembleClient(() => "k");
+		await client.listMyCollections();
+		await client.createCollection("New");
+		await client.listMyCollections();
+		expect(requestUrl).toHaveBeenCalledTimes(3);
+	});
+
+	it("starts over when the API key changes", async () => {
+		requestUrl.mockResolvedValue(ok({ id: "u1", name: "U", handle: "u.bsky.social" }));
+		let key = "first";
+		const client = new SembleClient(() => key);
+		await client.getMyProfile();
+		key = "second";
 		await client.getMyProfile();
 		expect(requestUrl).toHaveBeenCalledTimes(2);
 	});

@@ -1,8 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("obsidian", () => ({ Modal: class {}, Setting: class {}, setIcon: () => {} }));
-
-const { hostOf, isHttpUrl, sameUrl } = await import("../src/ui");
+import { describe, expect, it } from "vitest";
+import { hostOf, isHttpUrl, sameUrl } from "../src/urls";
 
 describe("url helpers", () => {
 	it("treats Semble-normalized URLs as the same", () => {

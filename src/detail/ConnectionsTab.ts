@@ -10,7 +10,8 @@ import {
 } from "obsidian";
 import { CONNECTION_TYPES, type Connection, type ConnectionType, type User } from "../api";
 import type { WebLink } from "../links";
-import { ConfirmModal, errorText, isHttpUrl, openUrl, renderMessage, renderUrlCard, sameUrl } from "../ui";
+import { ConfirmModal, errorText, openUrl, renderMessage, renderUrlCard } from "../ui";
+import { isHttpUrl, sameUrl } from "../urls";
 import { Panel } from "./context";
 
 const CONNECTION_LABELS: Record<ConnectionType, string> = {
@@ -109,21 +110,21 @@ export class ConnectionsTab extends Panel {
 						.setTitle("Delete connection")
 						.setIcon("trash-2")
 						.setWarning(true)
-						.onClick(() => this.confirmDelete(connection.id)),
+						.onClick(() => this.confirmDelete(connection.id, [item.source.url, item.target.url])),
 				);
 			}
 			menu.showAtMouseEvent(evt);
 		});
 	}
 
-	private confirmDelete(connectionId: string): void {
+	private confirmDelete(connectionId: string, urls: string[]): void {
 		new ConfirmModal(this.ctx.app, {
 			title: "Delete connection?",
 			message: "This permanently deletes the connection from Semble.",
 			confirmText: "Delete",
 			onConfirm: async () => {
 				try {
-					await this.ctx.api.deleteConnection(connectionId);
+					await this.ctx.api.deleteConnection(connectionId, urls);
 					new Notice("Connection deleted");
 					this.ctx.refresh();
 				} catch (err) {
