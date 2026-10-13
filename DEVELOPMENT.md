@@ -124,11 +124,63 @@ Entries are matched with `sameUrl()`, because Semble normalizes URLs: for exampl
 - **Mobile:** the plugin uses no Node or Electron APIs, so `isDesktopOnly` is `false`.
 - **Linting:** `eslint-plugin-obsidianmd` checks the same guidelines that Obsidian's review uses for community plugin submissions. This includes flagging APIs newer than `minAppVersion`. "Semble" is added to the sentence-case rule's `ignoreWords` because it's a product name.
 
-## Releasing
+## Releasing and distribution
 
-1. `npm version patch|minor|major`. This updates `manifest.json` and `versions.json` through `version-bump.mjs`.
-2. `git push --follow-tags`. The tag must match the manifest version exactly, with no `v` prefix.
-3. `.github/workflows/release.yml` lints, tests, builds, and creates a **draft** GitHub release with `main.js`, `manifest.json` and `styles.css` attached. Review it and publish it.
+Obsidian installs plugins from GitHub releases: each release must have `main.js`, `manifest.json` and `styles.css` attached. The release workflow (`.github/workflows/release.yml`) builds these for you.
 
-If you raise `minAppVersion`, update it in `manifest.json` before you run `npm version`.
+### Before the first release
 
+- **Public repo:** the plugin must live in a public GitHub repo. For example:
+  ```sh
+  gh repo create cosmik-network/semble-obsidian-plugin --public --source . --push
+  ```
+- **Manifest:** check `manifest.json`. The `id` must be unique in the community directory (`semble` was free when checked) and must not contain "obsidian". The name and description shouldn't mention Obsidian either. Optionally add a `fundingUrl`.
+- **Docs:** the `LICENSE` (MIT) and the README's *Network use and privacy* section are required by Obsidian's developer policies for plugins that use the network or need an account. Keep that section accurate if what the plugin sends changes.
+
+### Releasing a version
+
+The tag must match the version in `manifest.json` exactly, with no `v` prefix.
+
+**First release** (`manifest.json` is already at `0.1.0`):
+
+```sh
+git tag 0.1.0
+git push origin 0.1.0
+```
+
+**Later releases:**
+
+```sh
+npm version patch    # or minor / major; updates manifest.json and versions.json via version-bump.mjs, then commits and tags
+git push --follow-tags
+```
+
+The workflow then lints, tests, builds, and creates a **draft** GitHub release with the three files attached. Open it on the repo's Releases page, add release notes, and click **Publish**. Users get the update once the release is published.
+
+If you raise `minAppVersion`, update it in `manifest.json` before running `npm version`. `versions.json` then records which plugin versions need which Obsidian version, so people on older Obsidian versions get the last compatible release.
+
+### Beta testing with BRAT
+
+Before (or alongside) the community directory, testers can install the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin and add this repo's URL. BRAT installs from the GitHub releases and keeps the plugin updated.
+
+### Submitting to the community plugin directory
+
+Do this once, after the first release is published:
+
+1. Fork [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases).
+2. Add an entry to the end of `community-plugins.json`. `id`, `name`, `author` and `description` must match `manifest.json` exactly:
+   ```json
+   {
+     "id": "semble",
+     "name": "Semble",
+     "author": "Cosmik Network",
+     "description": "List every web link in the current note in a sidebar pane. Interact with each one as you would in Semble.",
+     "repo": "cosmik-network/semble-obsidian-plugin"
+   }
+   ```
+3. Open a pull request and complete the template's checklist.
+4. A bot validates the submission automatically. Then an Obsidian team member reviews the code against the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines), which can take a few weeks. Running `npm run lint` with `eslint-plugin-obsidianmd` checks the same rules beforehand.
+
+Once the pull request is merged, the plugin appears under **Settings → Community plugins → Browse**. From then on, publishing a GitHub release is all it takes to ship an update; nothing needs to change in `obsidian-releases`.
+
+Obsidian's own guide, in case the process changes: [Submit your plugin](https://docs.obsidian.md/Plugins/Releasing/Submit+your+plugin).
