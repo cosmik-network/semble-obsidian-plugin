@@ -132,4 +132,3 @@ Entries are matched with `sameUrl()`, because Semble normalizes URLs: for exampl
 
 If you raise `minAppVersion`, update it in `manifest.json` before you run `npm version`.
 
-Before submitting to the community plugin directory, add a `LICENSE` file.
