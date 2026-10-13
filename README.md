@@ -80,15 +80,13 @@ Everything opens instantly once it has been loaded. The plugin quietly checks Se
 
 The link list works offline. Everything that involves Semble needs a [Semble](https://semble.so) account and an API key.
 
-When you've added an API key, the plugin talks to Semble's API (`api.semble.so`), sending your key with each request. It sends:
+When you've added an API key, the plugin talks to Semble's API (`api.semble.so`), sending your key with each request. Semble's [privacy policy](https://semble.so/privacy-policy) covers how it handles this data. The plugin sends:
 
 - **Links in the note you have open**, to get their save counts, and to show a link's details, related links, connections, who saved it and which collections it's in.
 - **Your Semble library and collections**, to show them in the Add tab.
 - **Changes you make**, such as saving a link, adding a note, creating a collection or adding a connection. These are published to your Semble account.
 
 Only the web links themselves are sent, never the rest of your note's text or any other notes. Without an API key, the plugin makes no network requests. Links you open go to their page on semble.so in your browser.
-
-Semble's own terms and privacy policy cover data held by Semble.
 
 ## Settings
 
