@@ -1,5 +1,5 @@
-import { Component, setIcon } from "obsidian";
-import { API_KEYS_URL, COLLECTION_LISTS, type UrlInfo } from "../api";
+import { Component, debounce, setIcon } from "obsidian";
+import { API_KEYS_URL, type UrlInfo } from "../api";
 import type { WebLink } from "../links";
 import type SemblePlugin from "../main";
 import { errorText, openUrl, plural, renderToggleGroup, type ToggleGroup } from "../ui";
@@ -98,8 +98,28 @@ export class LinkDetail extends Component {
 			"semble-tabs",
 		);
 		this.bodyEl = scrollEl.createDiv({ cls: "semble-tab-body" });
+
+		// Everything renders from the cache straight away and is checked again in
+		// the background; when something about this link actually changed, redraw.
+		this.register(
+			this.plugin.api.onChange((change) => {
+				if (change.url === undefined || sameUrl(change.url, this.link.url)) this.applyFreshData();
+			}),
+		);
+		this.register(() => this.applyFreshData.cancel());
 		this.refresh();
 	}
+
+	/** Redraw the header, and the current tab unless the user is mid-edit. Batches bursts of changes. */
+	private readonly applyFreshData = debounce(
+		() => {
+			if (!this.alive) return;
+			void this.loadInfo();
+			if (this.panel?.canRefresh()) this.showView(this.view, true);
+		},
+		100,
+		true,
+	);
 
 	onunload(): void {
 		this.alive = false;
@@ -123,13 +143,6 @@ export class LinkDetail extends Component {
 		};
 
 		button("arrow-left", "Back to links", () => this.host.back());
-		if (this.plugin.api.hasApiKey) {
-			button("refresh-cw", "Reload from Semble", () => {
-				// Responses are cached for a few minutes; this fetches fresh ones for this link.
-				this.plugin.api.invalidate({ urls: [this.link.url], methods: COLLECTION_LISTS });
-				this.refresh();
-			});
-		}
 		button("text-cursor", "Jump to link in note", () => this.host.revealInNote(this.link));
 		button("external-link", "Open link", () => openUrl(this.link.url));
 	}

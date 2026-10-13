@@ -91,13 +91,62 @@ describe("SembleClient cache", () => {
 		expect(requestUrl).toHaveBeenCalledTimes(2);
 	});
 
-	it("expires entries after the TTL", async () => {
+	it("serves cached data immediately and re-checks it in the background", async () => {
+		vi.useFakeTimers();
+		try {
+			requestUrl
+				.mockResolvedValueOnce(info("https://a.dev"))
+				.mockResolvedValueOnce(ok({ metadata: { url: "https://a.dev", title: "New" } }));
+			const client = new SembleClient(() => "k");
+			const changes: unknown[] = [];
+			client.onChange((change) => changes.push(change));
+
+			await client.getUrlInfo("https://a.dev");
+			vi.advanceTimersByTime(5 * 1000);
+			await client.getUrlInfo("https://a.dev"); // recent: no re-check
+			expect(requestUrl).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(10 * 1000);
+			// Stale but usable: the old value comes back at once while a re-check starts.
+			await expect(client.getUrlInfo("https://a.dev")).resolves.toEqual({ metadata: { url: "https://a.dev" } });
+			expect(requestUrl).toHaveBeenCalledTimes(2);
+			await vi.runAllTimersAsync();
+
+			expect(changes).toEqual([{ method: "network.cosmik.card.getUrlMetadata", url: "https://a.dev" }]);
+			await expect(client.getUrlInfo("https://a.dev")).resolves.toEqual({
+				metadata: { url: "https://a.dev", title: "New" },
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("doesn't notify when a background check finds the same data", async () => {
+		vi.useFakeTimers();
+		try {
+			requestUrl.mockResolvedValue(info("https://a.dev"));
+			const client = new SembleClient(() => "k");
+			const listener = vi.fn();
+			client.onChange(listener);
+			await client.getUrlInfo("https://a.dev");
+			vi.advanceTimersByTime(11 * 1000);
+			await client.getUrlInfo("https://a.dev");
+			await vi.runAllTimersAsync();
+			expect(requestUrl).toHaveBeenCalledTimes(2);
+			expect(listener).not.toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("fetches again before showing data that's over an hour old", async () => {
 		vi.useFakeTimers();
 		try {
 			requestUrl.mockResolvedValue(info("https://a.dev"));
 			const client = new SembleClient(() => "k");
 			await client.getUrlInfo("https://a.dev");
-			vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+			vi.advanceTimersByTime(60 * 60 * 1000 + 1);
+			expect(client.peekUrlInfo("https://a.dev")).toBeUndefined();
 			await client.getUrlInfo("https://a.dev");
 			expect(requestUrl).toHaveBeenCalledTimes(2);
 		} finally {

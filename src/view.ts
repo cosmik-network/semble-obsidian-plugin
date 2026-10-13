@@ -33,6 +33,8 @@ export class LinksView extends ItemView {
 	private readonly rowEls = new Map<string, HTMLElement[]>();
 	/** Incremented per stats load so results for an old list are dropped. */
 	private statsRun = 0;
+	/** Check every row's counts with Semble on the next draw (not just missing ones). */
+	private revalidateStats = false;
 	private filter = "";
 	/** Incremented per refresh so a slow read can't overwrite a newer result. */
 	private refreshId = 0;
@@ -49,7 +51,7 @@ export class LinksView extends ItemView {
 	 * Looking up stats for links Semble hasn't been asked about waits until the
 	 * note settles, so typing a URL doesn't query every partial URL on the way.
 	 */
-	private readonly fetchStatsLater = debounce(() => void this.fetchStats(), 1000, true);
+	private readonly fetchStatsLater = debounce(() => void this.fetchStats(true), 1000, true);
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -88,6 +90,8 @@ export class LinksView extends ItemView {
 
 		const { workspace, metadataCache, vault } = this.app;
 		this.registerEvent(workspace.on("file-open", (file) => this.setFile(file)));
+		// A background check found different counts: show them.
+		this.register(this.plugin.api.onChange(() => this.showStats()));
 		this.registerEvent(
 			metadataCache.on("changed", (file) => {
 				if (file === this.file) this.requestRefresh();
@@ -117,6 +121,7 @@ export class LinksView extends ItemView {
 		if (file === this.file) return;
 		this.file = file;
 		this.links = [];
+		this.revalidateStats = true;
 		this.closeDetail();
 		void this.refresh();
 	}
@@ -160,7 +165,8 @@ export class LinksView extends ItemView {
 		this.detail = null;
 		this.detailEl.hide();
 		this.listViewEl.show();
-		// Saving in the link view invalidates that link's cached stats; refresh the counts.
+		// Re-check the counts: the link view may have changed them.
+		this.revalidateStats = true;
 		this.showStats();
 	}
 
@@ -198,15 +204,25 @@ export class LinksView extends ItemView {
 			if (info) for (const el of els) applyStats(el, info);
 			else missing = true;
 		}
-		if (missing) this.fetchStatsLater();
+		// Opening a note (or coming back from a link) checks every count with
+		// Semble; redraws while typing only fetch counts that are missing.
+		if (this.revalidateStats && this.rowEls.size > 0) {
+			this.revalidateStats = false;
+			void this.fetchStats(false);
+		} else if (missing) {
+			this.fetchStatsLater();
+		}
 	}
 
-	/** Fetch stats for rows that don't have them yet, a few at a time to go easy on the API. */
-	private async fetchStats(): Promise<void> {
+	/**
+	 * Fetch counts a few at a time to go easy on the API. Cached ones return
+	 * immediately and are re-checked in the background if they're not recent.
+	 */
+	private async fetchStats(onlyMissing: boolean): Promise<void> {
 		const { api } = this.plugin;
 		if (!api.hasApiKey) return;
 		const run = ++this.statsRun;
-		const queue = [...this.rowEls.keys()].filter((url) => !api.peekUrlInfo(url));
+		const queue = [...this.rowEls.keys()].filter((url) => !onlyMissing || !api.peekUrlInfo(url));
 
 		const worker = async () => {
 			for (let url = queue.shift(); url !== undefined; url = queue.shift()) {

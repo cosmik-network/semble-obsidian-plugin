@@ -209,6 +209,11 @@ export class LibraryPanel extends Panel {
 		};
 	}
 
+	/** Not while the user has unsaved changes, a search, or another collection source showing. */
+	canRefresh(): boolean {
+		return !this.busy && !this.isDirty() && !this.query && this.source === "mine";
+	}
+
 	private isDirty(): boolean {
 		if (this.note !== this.initialNote) return true;
 		if (this.selected.size !== this.initialSelected.size) return true;

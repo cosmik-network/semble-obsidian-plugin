@@ -35,6 +35,8 @@ function connectionLabel(type: string | undefined): string {
 /** Connections section: typed links between this URL and others, and a form to add one. */
 export class ConnectionsPanel extends Panel {
 	private me: User | null = null;
+	/** True while the add-connection form is showing. */
+	private creating = false;
 	private request = 0;
 
 	protected async init(): Promise<void> {
@@ -45,7 +47,12 @@ export class ConnectionsPanel extends Panel {
 
 	// --- List ---
 
+	canRefresh(): boolean {
+		return !this.creating;
+	}
+
 	private showList(): void {
+		this.creating = false;
 		const request = ++this.request;
 		this.containerEl.empty();
 		// First, and available right away, so adding a connection never waits on the list.
@@ -124,6 +131,7 @@ export class ConnectionsPanel extends Panel {
 	// --- Create ---
 
 	private showCreate(): void {
+		this.creating = true;
 		++this.request;
 		const { ctx } = this;
 		this.containerEl.empty();

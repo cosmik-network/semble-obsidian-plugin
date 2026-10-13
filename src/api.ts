@@ -10,8 +10,10 @@ const BASE_URL = "https://api.semble.so/xrpc";
 /** Identifies this integration to Semble via the optional X-Semble-Client header. */
 const CLIENT_ID = "obsidian";
 
-/** How long a GET response is reused before it's fetched again. */
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** A cached response older than this is checked again in the background when next used. */
+const REVALIDATE_AFTER_MS = 10 * 1000;
+/** A cached response older than this isn't shown at all; it's fetched again first. */
+const MAX_AGE_MS = 60 * 60 * 1000;
 
 export const COLLECTION_LISTS = [
 	"network.cosmik.collection.listMine",
@@ -142,28 +144,46 @@ interface CacheEntry {
 	method: string;
 	/** The `url` query param, so entries about a URL can be invalidated together. */
 	url?: string;
-	expires: number;
+	fetchedAt: number;
 	value: Promise<unknown>;
-	/** The resolved response, once it arrives, for synchronous reads via peek(). */
-	result?: { value: unknown };
+	/** The resolved response, once it arrives: for peek(), and to compare with fresh data. */
+	result?: { value: unknown; json: string };
+	revalidating?: boolean;
+}
+
+/** Which cached response changed after a background check. */
+export interface CacheChange {
+	method: string;
+	url?: string;
 }
 
 /**
- * GET responses are cached in memory for a few minutes, so reopening a link's
- * view renders instantly. Caching the promise also shares identical requests
- * that are in flight. Mutations invalidate the entries they affect, and the
- * whole cache is dropped when the API key changes.
+ * GET responses are cached in memory and served stale-while-revalidate: a
+ * cached response is returned immediately, and if it's more than a few
+ * seconds old it's fetched again in the background. If the fresh data
+ * differs, the cache is updated and onChange listeners are told, so views can
+ * redraw just the parts that changed; identical data changes nothing.
+ * Caching the promise also shares identical requests that are in flight.
+ * Mutations invalidate the entries they affect, and the whole cache is
+ * dropped when the API key changes.
  */
 export class SembleClient {
 	private readonly cache = new Map<string, CacheEntry>();
 	/** The key the cache was filled with. */
 	private cacheKey: string | null = null;
+	private readonly listeners = new Set<(change: CacheChange) => void>();
 
 	/** `getApiKey` is read on every request so key changes apply immediately. */
 	constructor(private readonly getApiKey: () => string | null) {}
 
 	get hasApiKey(): boolean {
 		return Boolean(this.getApiKey());
+	}
+
+	/** Called when a background check finds different data. Returns an unsubscribe function. */
+	onChange(listener: (change: CacheChange) => void): () => void {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
 	}
 
 	/**
@@ -323,7 +343,7 @@ export class SembleClient {
 	private peek<T>(method: string, query: Query): T | undefined {
 		this.checkCacheKey();
 		const entry = this.cache.get(this.pathFor(method, query));
-		if (!entry || entry.expires <= Date.now()) return undefined;
+		if (!entry || Date.now() - entry.fetchedAt > MAX_AGE_MS) return undefined;
 		return entry.result?.value as T | undefined;
 	}
 
@@ -333,24 +353,48 @@ export class SembleClient {
 
 		const now = Date.now();
 		const hit = this.cache.get(path);
-		if (hit && hit.expires > now) return hit.value as Promise<T>;
+		if (hit && now - hit.fetchedAt <= MAX_AGE_MS) {
+			if (hit.result && now - hit.fetchedAt > REVALIDATE_AFTER_MS) void this.revalidate(path, hit);
+			return hit.value as Promise<T>;
+		}
 
 		const value = this.request<T>("GET", path);
 		const entry: CacheEntry = {
 			method,
 			url: typeof query.url === "string" ? query.url : undefined,
-			expires: now + CACHE_TTL_MS,
+			fetchedAt: now,
 			value,
 		};
 		this.cache.set(path, entry);
 		value.then(
-			(result) => (entry.result = { value: result }),
+			(result) => (entry.result = { value: result, json: JSON.stringify(result) }),
 			// Never cache failures; the caller still sees the rejection.
 			() => {
 				if (this.cache.get(path) === entry) this.cache.delete(path);
 			},
 		);
 		return value;
+	}
+
+	/** Fetch a cached response again; update it and notify listeners only if the data changed. */
+	private async revalidate(path: string, entry: CacheEntry): Promise<void> {
+		if (entry.revalidating) return;
+		entry.revalidating = true;
+		try {
+			const fresh = await this.request("GET", path);
+			// Invalidated, or replaced by a newer request, while this was in flight.
+			if (this.cache.get(path) !== entry) return;
+			entry.fetchedAt = Date.now();
+			const json = JSON.stringify(fresh);
+			if (json === entry.result?.json) return;
+			entry.result = { value: fresh, json };
+			entry.value = Promise.resolve(fresh);
+			for (const listener of this.listeners) listener({ method: entry.method, url: entry.url });
+		} catch {
+			// Keep serving the cached response; the next use will try again.
+		} finally {
+			entry.revalidating = false;
+		}
 	}
 
 	private async post<T>(

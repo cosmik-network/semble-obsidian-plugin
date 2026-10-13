@@ -26,7 +26,7 @@ The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, s
 
 Clicking a link in the list opens a view for that link. It's laid out like Semble's browser extension but built from Obsidian's own toolbar buttons, list rows and inputs. The parts, from top to bottom:
 
-- **Toolbar:** buttons to go back to the list, reload the link's data from Semble, jump to the link in the note, and open the link.
+- **Toolbar:** buttons to go back to the list, jump to the link in the note, and open the link.
 - **Header:** the site, a *Saved* marker if the link is in your library, the title and the description.
 - **Stats:** saves, collections and connections. Each count works like an extra tab. Clicking it shows its list in the area below the tab bar and highlights the count:
   - **Saves** shows *Saved by*. Click someone to open their Semble profile, `semble.so/profile/<handle>`.
@@ -118,13 +118,24 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 **Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
 
-**Caching.** GET responses are cached in memory for 5 minutes. The link list's save counts use the same request as the link view's header, so opening a link from the list is usually instant. `peekUrlInfo()` reads a cached result without making a request, which lets the list redraw as you type without flickering. Responses are keyed by method and query. Going back to the list and reopening a link renders from the cache without any loading state. The client caches the promise, not just the result, so identical requests that are already in flight are shared. Failed requests are never cached. Each mutation clears what it makes stale:
+**Caching.** GET responses are cached in memory and served *stale-while-revalidate*:
+
+- Opening a link, or switching tabs, renders straight from the cache. Anything more than 10 seconds old is then fetched again in the background.
+- If the fresh data is identical, nothing changes on screen. If it differs, such as a new collection, save or connection, the client updates the cache and calls `onChange` listeners. The link view then redraws its header, and the current tab unless you're mid-edit: unsaved collection changes, a search or filter, extra pages loaded, or the add-connection form open. The link list redraws its counts.
+- Opening a note re-checks the list's counts the same way. Redraws while typing only fetch counts that are missing.
+- Data more than an hour old isn't shown. It's fetched first.
+- The client caches the promise, not just the result, so identical requests that are already in flight are shared, and the link list's counts share the link view header's request. `peekUrlInfo()` reads a cached result without making a request, so the list redraws as you type without flickering.
+- Failed requests are never cached, and a failed background check keeps the cached data.
+
+Your own changes are known to make data stale, so each one clears the affected entries and they're fetched fresh:
 
 - Adding, updating or removing a library card clears that URL's entries and the collection lists.
 - Creating a collection clears the collection lists.
 - Creating or deleting a connection clears entries for both of its URLs.
 
-Entries are matched with `sameUrl()`, so normalized URLs still match. A different API key clears the whole cache. The reload button in the link view clears the link's entries so changes made elsewhere, such as on semble.so, show up straight away. 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
+Entries are matched with `sameUrl()`, so normalized URLs still match. A different API key clears the whole cache. Changes made elsewhere, such as on semble.so, show up through the background checks; there's no reload button.
+
+**Errors.** 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
 
 | Where                     | Endpoints                                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------ |

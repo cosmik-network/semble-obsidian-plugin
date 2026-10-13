@@ -41,18 +41,31 @@ export abstract class Panel extends Component {
 		this.containerEl.empty();
 	}
 
+	/**
+	 * Whether the panel can be rebuilt when fresh data arrives. Panels say no
+	 * while the user is in the middle of something a rebuild would throw away.
+	 */
+	canRefresh(): boolean {
+		return true;
+	}
+
 	protected abstract init(): Promise<void>;
 }
 
 /** A panel that lists paged results, with a "Load more" row when there are more. */
 export abstract class PagedPanel<T> extends Panel {
 	protected listEl!: HTMLElement;
-	private page = 1;
+	protected page = 1;
 	private request = 0;
 
 	protected abstract readonly emptyText: string;
 	protected abstract fetchPage(page: number): Promise<{ items: T[]; hasMore: boolean }>;
 	protected abstract renderItem(item: T): void;
+
+	/** Not after "Load more": a rebuild would drop back to the first page. */
+	canRefresh(): boolean {
+		return this.page === 1;
+	}
 
 	/** Controls above the list, e.g. a filter. */
 	protected renderControls(): void {}

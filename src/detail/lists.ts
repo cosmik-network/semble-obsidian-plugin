@@ -9,6 +9,10 @@ export class RelatedPanel extends PagedPanel<UrlView> {
 	protected readonly emptyText = "No related links found.";
 	private urlType: UrlType | "" = "";
 
+	canRefresh(): boolean {
+		return super.canRefresh() && this.urlType === "";
+	}
+
 	protected renderControls(): void {
 		const types = URL_TYPES.map((t) => ({ id: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
 		renderToggleGroup<UrlType | "">(
