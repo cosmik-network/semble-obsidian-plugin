@@ -1,6 +1,4 @@
 import { App, Modal, Setting, setIcon } from "obsidian";
-import type { UrlMetadata } from "./api";
-import { hostOf } from "./urls";
 
 /** Obsidian routes window.open for http(s) URLs to the system browser (or Web viewer, if enabled). */
 export function openUrl(url: string): void {
@@ -15,74 +13,98 @@ export function plural(count: number, singular: string, pluralForm = `${singular
 	return `${count} ${count === 1 ? singular : pluralForm}`;
 }
 
-/** Muted placeholder text, with an optional retry button for failed loads. */
+/** Muted placeholder text, with an optional retry link for failed loads. */
 export function renderMessage(parentEl: HTMLElement, text: string, retry?: () => void): HTMLElement {
-	const el = parentEl.createDiv({ cls: "semble-message" });
-	el.createDiv({ text });
+	const el = parentEl.createDiv({ cls: "semble-message", text });
 	if (retry) {
-		const button = el.createEl("button", { text: "Try again" });
-		button.addEventListener("click", retry);
+		el.appendText(" ");
+		const link = el.createEl("a", { text: "Try again", href: "#" });
+		link.addEventListener("click", (evt) => {
+			evt.preventDefault();
+			retry();
+		});
 	}
 	return el;
 }
 
-export interface UrlCardOptions {
-	/** Small label next to the host, e.g. "This link". */
-	badge?: string;
+export interface RowOptions {
+	/** Lucide icon name. */
+	icon?: string;
+	/** Small round image (e.g. an avatar) shown instead of the icon; the icon is the fallback. */
+	imageUrl?: string;
+	title: string;
+	/** Faint second line, e.g. a host name. */
+	detail?: string;
+	/** Muted, wrapped text under the detail line, e.g. a note. */
+	note?: string;
+	/** Right-aligned count or label, like the counts in Outline and Backlinks. */
+	flair?: string;
+	tooltip?: string;
 	onClick?: (evt: MouseEvent) => void;
+	onContextMenu?: (evt: MouseEvent) => void;
 }
 
-/** Compact card for a URL: host, title, description and thumbnail, like Semble's own cards. */
-export function renderUrlCard(
-	parentEl: HTMLElement,
-	metadata: UrlMetadata,
-	options: UrlCardOptions = {},
-): HTMLElement {
-	const cardEl = parentEl.createDiv({ cls: "semble-card" });
-	const textEl = cardEl.createDiv({ cls: "semble-card-text" });
+/**
+ * A list row built from Obsidian's core `tree-item` classes, so every list in
+ * the pane looks like Outline, Backlinks and Search. Returns the `.tree-item`.
+ */
+export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLElement {
+	const itemEl = parentEl.createDiv({ cls: "tree-item semble-row" });
+	const selfEl = itemEl.createDiv({ cls: "tree-item-self" });
 
-	const siteEl = textEl.createDiv({ cls: "semble-card-site" });
-	siteEl.createSpan({ text: hostOf(metadata.url) ?? metadata.url });
-	if (options.badge) siteEl.createSpan({ cls: "semble-badge", text: options.badge });
+	if (options.icon || options.imageUrl) {
+		const iconEl = selfEl.createDiv({ cls: "semble-row-icon" });
+		const fallback = () => options.icon && setIcon(iconEl, options.icon);
+		if (options.imageUrl) {
+			const img = iconEl.createEl("img", {
+				attr: { src: options.imageUrl, alt: "", loading: "lazy", referrerpolicy: "no-referrer" },
+			});
+			img.addEventListener("error", () => {
+				img.remove();
+				fallback();
+			});
+		} else {
+			fallback();
+		}
+	}
 
-	textEl.createDiv({ cls: "semble-card-title", text: metadata.title || metadata.url });
-	if (metadata.description) textEl.createDiv({ cls: "semble-card-desc", text: metadata.description });
+	const innerEl = selfEl.createDiv({ cls: "tree-item-inner" });
+	innerEl.createDiv({ cls: "semble-row-title", text: options.title });
+	if (options.detail) innerEl.createDiv({ cls: "semble-row-detail", text: options.detail });
+	if (options.note) innerEl.createDiv({ cls: "semble-row-note", text: options.note });
 
-	if (metadata.imageUrl) renderThumbnail(cardEl, metadata.imageUrl);
-
+	if (options.flair) {
+		selfEl.createDiv({ cls: "tree-item-flair-outer" }).createSpan({ cls: "tree-item-flair", text: options.flair });
+	}
+	if (options.tooltip) {
+		selfEl.setAttr("aria-label", options.tooltip);
+		selfEl.setAttr("data-tooltip-position", "left");
+	}
 	if (options.onClick) {
 		const onClick = options.onClick;
-		cardEl.addClass("is-clickable");
-		cardEl.setAttr("aria-label", metadata.url);
-		cardEl.addEventListener("click", (evt) => onClick(evt));
+		selfEl.addClass("is-clickable");
+		selfEl.addEventListener("click", (evt) => onClick(evt));
 	}
-	return cardEl;
+	if (options.onContextMenu) selfEl.addEventListener("contextmenu", options.onContextMenu);
+	return itemEl;
 }
 
-export function renderThumbnail(parentEl: HTMLElement, src: string, cls = "semble-thumb"): void {
-	const img = parentEl.createEl("img", { cls, attr: { src, alt: "", loading: "lazy", referrerpolicy: "no-referrer" } });
-	img.addEventListener("error", () => img.remove());
-}
-
-/** Pill-shaped toggle button, as used for filters. */
-export function renderChip(
-	parentEl: HTMLElement,
-	label: string,
-	options: { icon?: string; active?: boolean; onClick: () => void },
-): HTMLElement {
-	const chip = parentEl.createEl("button", { cls: "semble-chip" });
-	chip.toggleClass("is-active", Boolean(options.active));
-	chip.setAttr("aria-pressed", String(Boolean(options.active)));
-	if (options.icon) setIcon(chip.createSpan({ cls: "semble-chip-icon" }), options.icon);
-	chip.createSpan({ text: label });
-	chip.addEventListener("click", options.onClick);
-	return chip;
+/** A labelled form field; returns the element to put the control in. */
+export function renderField(parentEl: HTMLElement, label: string): HTMLElement {
+	const fieldEl = parentEl.createDiv({ cls: "semble-field" });
+	fieldEl.createDiv({ cls: "semble-field-label", text: label });
+	return fieldEl;
 }
 
 export class ConfirmModal extends Modal {
 	constructor(
 		app: App,
-		private readonly options: { title: string; message: string; confirmText: string; onConfirm: () => void | Promise<void> },
+		private readonly options: {
+			title: string;
+			message: string;
+			confirmText: string;
+			onConfirm: () => void | Promise<void>;
+		},
 	) {
 		super(app);
 	}

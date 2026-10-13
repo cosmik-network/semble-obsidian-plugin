@@ -1,21 +1,18 @@
-import { ButtonComponent, debounce, Notice, SearchComponent, setIcon, TextAreaComponent } from "obsidian";
+import { ButtonComponent, debounce, DropdownComponent, Notice, SearchComponent, TextAreaComponent } from "obsidian";
 import type { Collection, UrlCard } from "../api";
-import { ConfirmModal, errorText, plural, renderChip, renderMessage } from "../ui";
+import { ConfirmModal, errorText, renderMessage, renderRow } from "../ui";
 import { Panel } from "./context";
 
 type Source = "mine" | "recommended" | "open";
 
-const SOURCES: { id: Source; label: string; icon: string }[] = [
-	{ id: "mine", label: "My collections", icon: "folder" },
-	{ id: "recommended", label: "Recommended", icon: "sparkles" },
-	{ id: "open", label: "Open", icon: "sprout" },
-];
+const SOURCES: Record<Source, string> = {
+	mine: "My collections",
+	recommended: "Recommended",
+	open: "Open collections",
+};
 
-/**
- * "Add" / "Update" tab: choose collections and write a note, then save the
- * link to (or update it in) the user's Semble library.
- */
-export class LibraryTab extends Panel {
+/** Library section: pick collections, write a note, and save the link to Semble. */
+export class LibraryPanel extends Panel {
 	private card: UrlCard | undefined;
 	private initialSelected = new Set<string>();
 	private selected = new Set<string>();
@@ -25,13 +22,12 @@ export class LibraryTab extends Panel {
 	private source: Source = "mine";
 	private query = "";
 	private collections: Collection[] = [];
-	/** Every collection seen so far, so selected ones can be shown even when filtered out. */
+	/** Every collection seen so far, so selected ones stay listed even when filtered out. */
 	private readonly known = new Map<string, Collection>();
 	private recommended: Collection[] | null = null;
 	private listRequest = 0;
 	private busy = false;
 
-	private chipsEl!: HTMLElement;
 	private listEl!: HTMLElement;
 	private saveButton!: ButtonComponent;
 
@@ -70,67 +66,50 @@ export class LibraryTab extends Panel {
 
 	private render(): void {
 		const { containerEl } = this;
-		containerEl.addClass("semble-library-tab");
 
-		new SearchComponent(containerEl.createDiv({ cls: "semble-search" }))
-			.setPlaceholder("Search or create a collection...")
+		const controlsEl = containerEl.createDiv({ cls: "semble-controls" });
+		new SearchComponent(controlsEl).setPlaceholder("Find or create a collection...").onChange((value) => {
+			this.query = value.trim();
+			this.searchLater();
+		});
+		new DropdownComponent(controlsEl)
+			.addOptions(SOURCES)
+			.setValue(this.source)
 			.onChange((value) => {
-				this.query = value.trim();
-				this.searchLater();
+				this.source = value as Source;
+				void this.loadCollections();
 			});
-
-		this.chipsEl = containerEl.createDiv({ cls: "semble-chips" });
-		this.renderChips();
 
 		this.listEl = containerEl.createDiv({ cls: "semble-collection-list" });
 
-		new TextAreaComponent(containerEl.createDiv({ cls: "semble-note" }))
+		new TextAreaComponent(containerEl.createDiv({ cls: "semble-field" }))
 			.setPlaceholder("Add a note...")
 			.setValue(this.note)
 			.onChange((value) => {
 				this.note = value;
-				this.updateFooter();
+				this.updateButtons();
 			});
 
-		const footerEl = containerEl.createDiv({ cls: "semble-footer" });
+		const buttonsEl = containerEl.createDiv({ cls: "semble-buttons" });
 		if (this.card) {
-			const removeEl = footerEl.createEl("button", {
-				cls: "semble-icon-button mod-warning",
-				attr: { "aria-label": "Remove from library" },
-			});
-			setIcon(removeEl, "trash-2");
-			removeEl.addEventListener("click", () => this.confirmRemove());
+			new ButtonComponent(buttonsEl)
+				.setButtonText("Remove")
+				.setTooltip("Remove from your Semble library")
+				.onClick(() => this.confirmRemove())
+				.buttonEl.addClass("mod-warning");
 		}
-		new ButtonComponent(footerEl).setButtonText("Cancel").onClick(() => this.ctx.back());
-		this.saveButton = new ButtonComponent(footerEl)
-			.setButtonText(this.card ? "Update" : "Add to library")
+		this.saveButton = new ButtonComponent(buttonsEl)
+			.setButtonText(this.card ? "Save changes" : "Save to library")
 			.setCta()
 			.onClick(() => void this.save());
-		this.saveButton.buttonEl.addClass("semble-primary");
-		this.updateFooter();
-	}
-
-	private renderChips(): void {
-		this.chipsEl.empty();
-		for (const { id, label, icon } of SOURCES) {
-			renderChip(this.chipsEl, label, {
-				icon,
-				active: id === this.source,
-				onClick: () => {
-					if (id === this.source) return;
-					this.source = id;
-					this.renderChips();
-					void this.loadCollections();
-				},
-			});
-		}
+		this.updateButtons();
 	}
 
 	private async loadCollections(): Promise<void> {
 		const request = ++this.listRequest;
 		const { api, link } = this.ctx;
 		this.listEl.empty();
-		renderMessage(this.listEl, "Loading collections…");
+		renderMessage(this.listEl, "Loading…");
 
 		try {
 			let collections: Collection[];
@@ -162,7 +141,7 @@ export class LibraryTab extends Panel {
 		this.listEl.empty();
 		let items = this.collections;
 
-		// Like the browser extension, list the link's current collections first.
+		// List the link's current collections first.
 		if (this.source === "mine" && !this.query) {
 			const selected = [...this.selected].flatMap((id) => this.known.get(id) ?? []);
 			items = [...selected, ...items.filter((c) => !this.selected.has(c.id))];
@@ -174,52 +153,41 @@ export class LibraryTab extends Panel {
 			!items.some((c) => c.name.toLowerCase() === this.query.toLowerCase());
 		if (canCreate) this.renderCreateRow();
 		if (items.length === 0 && !canCreate) {
-			renderMessage(this.listEl, this.query ? "No collections match your search." : "No collections yet.");
+			renderMessage(this.listEl, this.query ? "No collections match." : "No collections yet.");
 		}
-
 		for (const collection of items) this.renderCollection(collection);
 	}
 
+	/** A `<label>` row around a native checkbox: clicking anywhere on it toggles the box. */
 	private renderCollection(collection: Collection): void {
-		const rowEl = this.listEl.createDiv({
-			cls: "semble-collection",
-			attr: { role: "checkbox", tabindex: "0" },
+		const itemEl = this.listEl.createDiv({ cls: "tree-item semble-row" });
+		const rowEl = itemEl.createEl("label", { cls: "tree-item-self is-clickable" });
+		const checkbox = rowEl.createEl("input", { type: "checkbox" });
+		checkbox.checked = this.selected.has(collection.id);
+		checkbox.addEventListener("change", () => {
+			if (checkbox.checked) this.selected.add(collection.id);
+			else this.selected.delete(collection.id);
+			this.updateButtons();
 		});
-		const textEl = rowEl.createDiv({ cls: "semble-collection-text" });
-		textEl.createDiv({ cls: "semble-collection-name", text: collection.name });
-		const meta = [plural(collection.cardCount, "card")];
-		if (this.source !== "mine") meta.push(`@${collection.author.handle}`);
-		textEl.createDiv({ cls: "semble-collection-meta", text: meta.join(" · ") });
-		const checkEl = rowEl.createDiv({ cls: "semble-check" });
 
-		const sync = () => {
-			const isSelected = this.selected.has(collection.id);
-			rowEl.toggleClass("is-selected", isSelected);
-			rowEl.setAttr("aria-checked", String(isSelected));
-			checkEl.empty();
-			if (isSelected) setIcon(checkEl, "check");
-		};
-		const toggle = () => {
-			if (this.selected.has(collection.id)) this.selected.delete(collection.id);
-			else this.selected.add(collection.id);
-			sync();
-			this.updateFooter();
-		};
-		sync();
-		rowEl.addEventListener("click", toggle);
-		rowEl.addEventListener("keydown", (evt) => {
-			if (evt.key === "Enter" || evt.key === " ") {
-				evt.preventDefault();
-				toggle();
-			}
-		});
+		const innerEl = rowEl.createDiv({ cls: "tree-item-inner" });
+		innerEl.createDiv({ cls: "semble-row-title", text: collection.name });
+		if (this.source !== "mine") {
+			innerEl.createDiv({ cls: "semble-row-detail", text: `@${collection.author.handle}` });
+		}
+		rowEl
+			.createDiv({ cls: "tree-item-flair-outer" })
+			.createSpan({ cls: "tree-item-flair", text: String(collection.cardCount) });
+		if (collection.description) rowEl.setAttr("aria-label", collection.description);
 	}
 
 	private renderCreateRow(): void {
 		const name = this.query;
-		const rowEl = this.listEl.createDiv({ cls: "semble-collection mod-create", attr: { tabindex: "0" } });
-		setIcon(rowEl.createDiv({ cls: "semble-check" }), "plus");
-		rowEl.createDiv({ cls: "semble-collection-name", text: `Create collection "${name}"` });
+		const rowEl = renderRow(this.listEl, {
+			icon: "plus",
+			title: `Create "${name}"`,
+			onClick: () => void create(),
+		});
 
 		const create = async () => {
 			rowEl.addClass("is-disabled");
@@ -228,17 +196,13 @@ export class LibraryTab extends Panel {
 				new Notice(`Created collection "${name}"`);
 				if (!this.alive) return;
 				this.selected.add(collectionId);
-				this.updateFooter();
+				this.updateButtons();
 				await this.loadCollections();
 			} catch (err) {
 				new Notice(errorText(err));
 				rowEl.removeClass("is-disabled");
 			}
 		};
-		rowEl.addEventListener("click", () => void create());
-		rowEl.addEventListener("keydown", (evt) => {
-			if (evt.key === "Enter") void create();
-		});
 	}
 
 	private isDirty(): boolean {
@@ -247,7 +211,7 @@ export class LibraryTab extends Panel {
 		return [...this.selected].some((id) => !this.initialSelected.has(id));
 	}
 
-	private updateFooter(): void {
+	private updateButtons(): void {
 		// A new link can be saved as-is; an existing one only when something changed.
 		this.saveButton?.setDisabled(this.busy || (Boolean(this.card) && !this.isDirty()));
 	}
@@ -255,7 +219,7 @@ export class LibraryTab extends Panel {
 	private async save(): Promise<void> {
 		const { api, link } = this.ctx;
 		this.busy = true;
-		this.updateFooter();
+		this.updateButtons();
 		try {
 			if (!this.card) {
 				await api.addUrl({
@@ -263,7 +227,7 @@ export class LibraryTab extends Panel {
 					note: this.note.trim() || undefined,
 					collectionIds: [...this.selected],
 				});
-				new Notice("Added to your Semble library");
+				new Notice("Saved to your Semble library");
 			} else {
 				const added = [...this.selected].filter((id) => !this.initialSelected.has(id));
 				const removed = [...this.initialSelected].filter((id) => !this.selected.has(id));
@@ -273,13 +237,13 @@ export class LibraryTab extends Panel {
 					addToCollections: added.length ? added : undefined,
 					removeFromCollections: removed.length ? removed : undefined,
 				});
-				new Notice("Updated in your Semble library");
+				new Notice("Saved changes to Semble");
 			}
 			this.ctx.refresh();
 		} catch (err) {
 			new Notice(errorText(err));
 			this.busy = false;
-			this.updateFooter();
+			this.updateButtons();
 		}
 	}
 

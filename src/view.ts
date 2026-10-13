@@ -6,14 +6,13 @@ import {
 	Menu,
 	Notice,
 	SearchComponent,
-	setIcon,
 	TFile,
 	type WorkspaceLeaf,
 } from "obsidian";
-import { LinkDetail, type TabId } from "./detail/LinkDetail";
+import { LinkDetail, type SectionId } from "./detail/LinkDetail";
 import { collapseDuplicates, extractLinks, type CollapsedLink, type WebLink } from "./links";
 import type SemblePlugin from "./main";
-import { openUrl } from "./ui";
+import { openUrl, renderRow } from "./ui";
 import { hostOf } from "./urls";
 
 export const VIEW_TYPE_LINKS = "semble-links";
@@ -36,8 +35,8 @@ export class LinksView extends ItemView {
 	private listEl!: HTMLElement;
 	private detailEl!: HTMLElement;
 	private detail: LinkDetail | null = null;
-	/** Reopen link views on the tab the user last chose. */
-	private detailTab: TabId = "library";
+	/** Sections open in the link view; kept so every link opens the same way. */
+	private readonly openSections = new Set<SectionId>(["library"]);
 
 	private readonly requestRefresh = debounce(() => void this.refresh(), 250, true);
 
@@ -137,9 +136,11 @@ export class LinksView extends ItemView {
 				back: () => this.closeDetail(),
 				revealInNote: (target) => void this.revealInNote(target),
 				noteLinks: () => this.links,
-				initialTab: this.detailTab,
-				onTabChange: (tab) => (this.detailTab = tab),
-				overlayEl: this.contentEl,
+				openSections: this.openSections,
+				onSectionToggle: (id, open) => {
+					if (open) this.openSections.add(id);
+					else this.openSections.delete(id);
+				},
 			}),
 		);
 	}
@@ -181,28 +182,19 @@ export class LinksView extends ItemView {
 	}
 
 	private renderItem({ link, count }: CollapsedLink): void {
-		// Reuse core tree-item classes so the pane matches Outline/Backlinks styling and themes.
-		const itemEl = this.listEl.createDiv({ cls: "tree-item semble-links-item" });
-		const selfEl = itemEl.createDiv({ cls: "tree-item-self is-clickable" });
-		selfEl.setAttr("aria-label", link.url);
-		selfEl.setAttr("data-tooltip-position", "left");
-
-		setIcon(selfEl.createDiv({ cls: "semble-links-item-icon" }), link.image ? "image" : "globe");
-
-		const innerEl = selfEl.createDiv({ cls: "tree-item-inner" });
-		innerEl.createDiv({ cls: "semble-links-item-title", text: link.displayText });
 		const host = hostOf(link.url);
-		if (host && host !== link.displayText) innerEl.createDiv({ cls: "semble-links-item-detail", text: host });
-
-		if (count > 1) {
-			selfEl.createDiv({ cls: "tree-item-flair-outer" }).createSpan({ cls: "tree-item-flair", text: String(count) });
-		}
-
-		selfEl.addEventListener("click", (evt) => {
-			if (Keymap.isModEvent(evt)) openUrl(link.url);
-			else this.openDetail(link);
+		renderRow(this.listEl, {
+			icon: link.image ? "image" : "globe",
+			title: link.displayText,
+			detail: host && host !== link.displayText ? host : undefined,
+			flair: count > 1 ? String(count) : undefined,
+			tooltip: link.url,
+			onClick: (evt) => {
+				if (Keymap.isModEvent(evt)) openUrl(link.url);
+				else this.openDetail(link);
+			},
+			onContextMenu: (evt) => this.showMenu(link, evt),
 		});
-		selfEl.addEventListener("contextmenu", (evt) => this.showMenu(link, evt));
 	}
 
 	private showMenu(link: WebLink, evt: MouseEvent): void {

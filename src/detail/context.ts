@@ -1,8 +1,9 @@
 import { App, Component } from "obsidian";
 import type { SembleClient, UrlInfo } from "../api";
 import type { WebLink } from "../links";
+import { renderMessage, renderRow } from "../ui";
 
-/** What the tabs of a link's detail view share. */
+/** What the sections of a link's detail view share. */
 export interface DetailContext {
 	app: App;
 	api: SembleClient;
@@ -12,15 +13,13 @@ export interface DetailContext {
 	info(): UrlInfo | null;
 	/** Web links in the current note other than this one, unique by URL. */
 	otherNoteLinks(): WebLink[];
-	/** Reload the header and current tab, e.g. after saving a change. */
+	/** Reload the header and every section, e.g. after saving a change. */
 	refresh(): void;
-	/** Return to the list of links. */
-	back(): void;
 }
 
 /**
- * Base for a tab's content. Tabs load data asynchronously, so `alive` lets
- * them drop results that arrive after the user has moved on.
+ * Base for a section's content. Content loads asynchronously, so `alive` lets
+ * it drop results that arrive after the section was closed or reloaded.
  */
 export abstract class Panel extends Component {
 	protected alive = false;
@@ -43,4 +42,59 @@ export abstract class Panel extends Component {
 	}
 
 	protected abstract init(): Promise<void>;
+}
+
+/** A panel that lists paged results, with a "Load more" row when there are more. */
+export abstract class PagedPanel<T> extends Panel {
+	protected listEl!: HTMLElement;
+	private page = 1;
+	private request = 0;
+
+	protected abstract readonly emptyText: string;
+	protected abstract fetchPage(page: number): Promise<{ items: T[]; hasMore: boolean }>;
+	protected abstract renderItem(item: T): void;
+
+	/** Controls above the list, e.g. a filter. */
+	protected renderControls(): void {}
+
+	protected async init(): Promise<void> {
+		this.renderControls();
+		this.listEl = this.containerEl.createDiv();
+		await this.reset();
+	}
+
+	/** Start again from the first page, e.g. after a filter changes. */
+	protected async reset(): Promise<void> {
+		this.page = 1;
+		this.listEl.empty();
+		await this.loadPage();
+	}
+
+	private async loadPage(): Promise<void> {
+		const request = ++this.request;
+		const loadingEl = renderMessage(this.listEl, "Loading…");
+		try {
+			const { items, hasMore } = await this.fetchPage(this.page);
+			if (!this.alive || request !== this.request) return;
+			loadingEl.remove();
+			if (items.length === 0 && this.page === 1) renderMessage(this.listEl, this.emptyText);
+			for (const item of items) this.renderItem(item);
+			if (hasMore) {
+				const moreEl = renderRow(this.listEl, {
+					icon: "chevrons-down",
+					title: "Load more",
+					onClick: () => {
+						moreEl.remove();
+						this.page++;
+						void this.loadPage();
+					},
+				});
+				moreEl.addClass("mod-load-more");
+			}
+		} catch (err) {
+			if (!this.alive || request !== this.request) return;
+			loadingEl.remove();
+			renderMessage(this.listEl, err instanceof Error ? err.message : String(err), () => void this.loadPage());
+		}
+	}
 }

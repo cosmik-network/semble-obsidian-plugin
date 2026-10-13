@@ -17,8 +17,6 @@ export const COLLECTION_LISTS = [
 	"network.cosmik.collection.listMine",
 	"network.cosmik.collection.search",
 	"network.cosmik.collection.getRecommendedForUrl",
-	// A collection's card list changes when a card is added to or removed from it.
-	"network.cosmik.collection.get",
 ];
 
 export const API_KEYS_URL = "https://semble.so/settings/api-keys";
@@ -67,10 +65,6 @@ export interface Collection {
 	cardCount: number;
 	updatedAt?: string;
 	author: User;
-}
-
-export interface CollectionWithCards extends Collection {
-	urlCards: UrlCard[];
 }
 
 /** A user who saved a URL, with their card for it. */
@@ -234,11 +228,6 @@ export class SembleClient {
 
 	getCollectionsForUrl(url: string, page = 1): Promise<{ collections: Collection[]; pagination: Pagination }> {
 		return this.get("network.cosmik.collection.getForUrl", { url, page, limit: 20 });
-	}
-
-	/** A collection with its first few cards, for previews. */
-	getCollection(collectionId: string, limit = 8): Promise<CollectionWithCards> {
-		return this.get("network.cosmik.collection.get", { collectionId, limit });
 	}
 
 	listMyCollections(searchText?: string): Promise<{ collections: Collection[] }> {
