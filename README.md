@@ -1,5 +1,7 @@
 # Semble for Obsidian
 
+![screenshot of the link list in the semble plugin](assets/image-3.png)
+
 See every web link in your note at a glance, and work with them on [Semble](https://semble.so) without leaving Obsidian.
 
 The plugin adds a pane to the sidebar that lists the web links in the note you're working on, the way **Outline** lists headings. Click a link to save it to your Semble library and collections, browse related links, and connect it to other links.
@@ -24,9 +26,13 @@ Your key is stored in Obsidian's Keychain, not in the plugin's settings file, so
 
 ### Open the pane
 
+![screenshot of the command palette command for opening the semble plugin](assets/image-2.png)
+
 When you first enable the plugin, it adds its pane to the right sidebar. Look for the Semble icon, a stack of stones, among the sidebar's tabs. You can move the pane anywhere, like any other pane. If you close it, click the same icon in the ribbon, or run **Semble: Show web links in current note** from the command palette, to bring it back.
 
 ## The link list
+
+![screenshot of the link list in the semble plugin](assets/image-1.png)
 
 The pane follows the note you're working on and updates as you type. It lists:
 
@@ -45,6 +51,11 @@ It skips links to other notes, `mailto:` and `obsidian://` links, and anything i
 Links open on their Semble page (`semble.so/url?id=…`) rather than on the site itself. Links to Semble collections open directly.
 
 ## The link view
+
+![screenshot of the link view, 'add' tab](assets/image-3.png)
+![screenshot of the link view, 'related' tab](assets/image-4.png)
+![screenshot of the link view, 'connections' tab](assets/image-5.png)
+![screenshot of the link view, 'collections' tab](assets/image-6.png)
 
 Clicking a link shows it as it is on Semble:
 
