@@ -1,11 +1,11 @@
 # Semble for Obsidian
 
-A sidebar pane that lists every web link (http/https URL) in the current note, the way the core **Outline** pane lists headings. Links to other notes are ignored.
+A sidebar pane that lists every web link (http/https URL) in the current note, the way the core **Outline** pane lists headings. Click a link to see it on [Semble](https://semble.so): save it to your library and collections, browse related links, and connect it to other links. Links to other notes are ignored.
 
 - Finds `[text](https://…)` links, `<https://…>` links, bare `https://…` URLs, and remote images
 - Skips anything that isn't a web link: `[[wikilinks]]`, `[text](note.md)`, `mailto:`, `obsidian://`, and URLs inside code or frontmatter
 - Follows the note you're working on and updates as you type
-- Click to open a link in your browser, or set it to jump to where the link appears in the note
+- Click a link to open its Semble view; Ctrl/Cmd-click opens it in your browser
 - Right-click to open the link, jump to it in the note, or copy the URL
 - A filter box, and an option to collapse duplicate URLs into one entry with a count
 
@@ -13,13 +13,30 @@ A sidebar pane that lists every web link (http/https URL) in the current note, t
 
 Run **Semble: Show web links in current note** from the command palette, or click the globe icon in the ribbon. The pane opens in the right sidebar. You can drag it anywhere, like any other pane, and Obsidian remembers where you put it.
 
+### Connecting Semble
+
+1. Create an API key at [semble.so/settings/api-keys](https://semble.so/settings/api-keys).
+2. In **Settings → Semble**, set **API key** to a secret that contains the key. You can create the secret from that field.
+3. Use **Check connection** to confirm it works. You should see "Connected to Semble as @your-handle".
+
+The key is kept in Obsidian's secret storage, not in the plugin's `data.json`, so it doesn't end up in synced or committed vault files.
+
+### The link view
+
+Clicking a link in the list opens a view for that link, laid out like Semble's browser extension. The header shows the site, title, description, thumbnail, an **In library** badge, and counts of saves, collections and connections. The back arrow returns to the list, and the icons next to it jump to the link in the note or open it in your browser. There are three tabs:
+
+- **Add / Update**: choose collections and write a note, then **Add to library**, or **Update** if the link is already saved. You can switch the collection list between **My collections**, **Recommended** (collections with similar links) and **Open** (collections anyone can add to). The search box filters the list. If no collection matches, it offers to create one with that name. The trash button removes the link from your library.
+- **Related**: links that Semble considers similar, filtered by type (article, book, video, and so on). Click one to open it.
+- **Connections**: typed connections between this link and others, such as *Supports*, *Opposes* or *Related*. Arrows show the direction. Click a connection to open the other link. Right-click one of your own connections to delete it. **Add connection** opens a form. The target field lists the other web links in the current note, and you can also paste any URL. Choose a connection type, use the swap button to reverse the direction, add an optional note, and select **Create**.
+
 ### Settings
 
-| Setting             | Default       | Effect                                                                                                         |
-| ------------------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| Click action        | Open the link | Whether a click opens the URL or jumps to the link's location in the note. Ctrl/Cmd-click always opens the URL |
-| Include images      | On            | List remote images written as `![alt](https://…)`                                                              |
-| Collapse duplicates | Off           | List each URL once, with a count of how many times it appears                                                  |
+| Setting             | Default | Effect                                                                     |
+| ------------------- | ------- | -------------------------------------------------------------------------- |
+| API key             | None    | The secret that holds your Semble API key                                  |
+| Check connection    | —       | Calls Semble with the key and shows which account it belongs to            |
+| Include images      | On      | List remote images written as `![alt](https://…)`                          |
+| Collapse duplicates | Off     | List each URL once, with a count of how many times it appears              |
 
 ## Development
 
@@ -30,7 +47,7 @@ npm install
 npm run dev      # watch mode: rebuilds main.js whenever you save a file
 npm run build    # type-check, then make a minified production build
 npm run lint     # ESLint with Obsidian's official rules (eslint-plugin-obsidianmd)
-npm test         # unit tests for web link extraction (Vitest)
+npm test         # unit tests (Vitest): link extraction, API client, URL helpers
 ```
 
 ### Trying it in a vault
@@ -47,12 +64,20 @@ Then in Obsidian go to **Settings → Community plugins**, turn on community plu
 
 ```
 src/
-  main.ts       Plugin entry point: registers the view, command, ribbon icon and settings tab
-  view.ts       LinksView (an ItemView): tracks the active note, renders the list, handles clicks and menus
-  links.ts      Pure web link extraction: no runtime Obsidian imports, so it's unit tested in Node
-  settings.ts   Settings interface, defaults and settings tab
+  main.ts                 Plugin entry point: registers the view, command, ribbon icon and settings tab; owns the API client
+  view.ts                 LinksView (an ItemView): tracks the active note, renders the list, swaps in the link view
+  links.ts                Pure web link extraction: no runtime Obsidian imports, so it's unit tested in Node
+  api.ts                  Typed Semble API client built on Obsidian's requestUrl
+  settings.ts             Settings interface, defaults and settings tab (API key secret, pane options)
+  ui.ts                   Shared helpers: URL cards, filter chips, confirm modal, URL comparison
+  detail/
+    LinkDetail.ts         The link view: navigation bar, header with metadata and stats, tab switching
+    context.ts            DetailContext shared by the tabs, and the Panel base class
+    LibraryTab.ts         Add / Update: collections, note, save and remove
+    RelatedTab.ts         Related links, filtered by type
+    ConnectionsTab.ts     Connection list and the create-connection form
 tests/
-  links.test.ts
+  links.test.ts  api.test.ts  ui.test.ts
 styles.css      Pane styles; Obsidian loads this automatically
 manifest.json   Plugin metadata read by Obsidian
 versions.json   Maps each plugin version to its minimum Obsidian version
@@ -74,16 +99,32 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 `refresh()` reads the file asynchronously, so each call takes an ID first. If a newer refresh has started by the time the read finishes, the older result is thrown away.
 
+**The link view.** `LinksView` keeps the list in the DOM and hides it while a link is open, so the filter and scroll position survive going back. `LinkDetail` is a `Component` added as a child of the view. Each tab is also a child `Component`, a subclass of `Panel`, so switching tabs, going back, or closing the pane unloads it and its listeners. Tabs load data asynchronously and check an `alive` flag, plus a request counter where a request can be repeated, before rendering. This drops responses that arrive after you've moved on. Switching to another note returns to the list, and changing settings rebuilds an open link view.
+
+**Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately. 401 and 403 responses turn into a "check your API key" message, and other errors show the API's own `message`. The endpoints used:
+
+| Where                     | Endpoints                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Header                    | `card.getUrlMetadata` (with `includeStats`)                                                                  |
+| Add / Update              | `card.getLibraryStatus`, `collection.listMine`, `collection.getRecommendedForUrl`, `collection.search` (open), `collection.create`, `card.addUrl`, `card.updateUrlAssociations`, `card.removeFromLibrary` |
+| Related                   | `search.getSimilarUrls`                                                                                      |
+| Connections               | `connection.getForUrl` (both directions), `connection.create`, `connection.delete`, `actor.getMyProfile` (to know which connections are yours) |
+| Settings                  | `actor.getMyProfile` (Check connection)                                                                      |
+
+Semble normalizes URLs, for example `https://semble.so` becomes `https://semble.so/`, so the plugin compares URLs with `sameUrl()` rather than `===`.
+
 ### Obsidian best practices followed
 
 - **Views:** the plugin never keeps references to its view. It looks them up with `getLeavesOfType()` and checks `instanceof LinksView`, because leaves can be deferred since 1.7. It doesn't detach leaves in `onunload()`, so the pane stays in place when the plugin is updated.
 - **Cleanup:** every listener is attached with `registerEvent` / `register*`, so it's removed automatically when the view closes or the plugin unloads.
 - **DOM:** the plugin builds elements with `createEl` / `createDiv`, never `innerHTML`. It reuses core `tree-item` classes and theme CSS variables, so the pane matches Outline and Backlinks in any theme.
 - **Workspace API:** it uses `getActiveFile()`, `revealLeaf()` and `Keymap.isModEvent()` instead of `workspace.activeLeaf` or hand-rolled modifier-key checks. It opens URLs with `window.open()`, which Obsidian sends to the system browser, or to the Web viewer core plugin if that's enabled.
-- **Settings:** settings are declared with `getSettingDefinitions()` (Obsidian 1.13+), which makes them show up in settings search. A `display()` fallback renders the same definitions on older versions. Labels use sentence case and the tab has no top-level heading.
+- **Settings:** settings are declared with `getSettingDefinitions()` (Obsidian 1.13+), which makes them show up in settings search. A `display()` fallback renders the same definitions on older versions. Labels use sentence case.
+- **Secrets:** the API key lives in `app.secretStorage` (Obsidian 1.11.4+). The settings only store the secret's name. This is why `minAppVersion` is 1.11.4.
+- **Network:** requests go through `requestUrl`, not `fetch`. It isn't subject to CORS and works on mobile.
 - **Commands:** command IDs and names don't include the plugin name (Obsidian adds it as a prefix), and no hotkeys are assigned by default.
 - **Mobile:** the plugin uses no Node or Electron APIs, so `isDesktopOnly` is `false`.
-- **Linting:** `eslint-plugin-obsidianmd` checks the same guidelines that Obsidian's review uses for community plugin submissions.
+- **Linting:** `eslint-plugin-obsidianmd` checks the same guidelines that Obsidian's review uses for community plugin submissions. This includes flagging APIs newer than `minAppVersion`. "Semble" is added to the sentence-case rule's `ignoreWords` because it's a product name.
 
 ### Releasing
 
@@ -99,6 +140,8 @@ If you raise `minAppVersion`, update it in `manifest.json` before you run `npm v
 - URLs in frontmatter properties aren't listed.
 - Reference-style links (`[text][ref]` with `[ref]: https://…` defined elsewhere) show up as a bare URL at the line where `[ref]` is defined, not where `[text][ref]` is used, and without the link text.
 - `www.example.com` without `https://` isn't detected.
+- The link view's collection list shows up to 100 of your collections. Use the search box to find others.
+- Connections are listed 50 at a time, newest first, with no paging yet.
 
 ## License
 

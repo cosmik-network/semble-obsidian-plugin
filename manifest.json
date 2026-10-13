@@ -2,7 +2,7 @@
 	"id": "semble",
 	"name": "Semble",
 	"version": "0.1.0",
-	"minAppVersion": "1.7.2",
+	"minAppVersion": "1.11.4",
 	"description": "List every web link in the current note in a sidebar pane.",
 	"author": "Cosmik",
 	"authorUrl": "https://cosmik.network",

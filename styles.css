@@ -1,13 +1,23 @@
 /*
- * Web links pane. Layout comes from Obsidian's core `.tree-item` classes (shared
- * with Outline and Backlinks); these rules only add what those lack. Use theme
- * variables rather than hard-coded colours so themes and dark mode just work.
+ * Web links pane. The list reuses Obsidian's core `.tree-item` classes (shared
+ * with Outline and Backlinks); the link detail view follows the layout of
+ * Semble's browser extension. Use theme variables rather than hard-coded
+ * colours so themes and dark mode just work.
  */
 
 .semble-links-view {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
+}
+
+/* ---------- Link list ---------- */
+
+.semble-links-list-view {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 }
 
 .semble-links-search {
@@ -47,4 +57,480 @@
 .semble-links-item-detail {
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
+}
+
+/* ---------- Link detail ---------- */
+
+.semble-detail-container {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.semble-detail {
+	display: flex;
+	flex-direction: column;
+	padding: 0 var(--size-4-3) var(--size-4-3);
+}
+
+.semble-detail-nav {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin: 0 calc(-1 * var(--size-4-3));
+	padding: var(--size-4-1) var(--size-4-2);
+	background-color: var(--background-secondary);
+}
+
+.semble-back {
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
+}
+
+.semble-spacer {
+	flex: 1;
+}
+
+.semble-detail-header {
+	display: flex;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3) 0;
+}
+
+.semble-detail-header-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+.semble-detail-title {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+	line-height: var(--line-height-tight);
+	overflow-wrap: anywhere;
+}
+
+.semble-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2) var(--size-4-3);
+	margin-top: var(--size-2-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.semble-stat strong {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.semble-connect {
+	padding: var(--size-4-2) 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.semble-connect ol {
+	padding-inline-start: var(--size-4-5);
+}
+
+/* ---------- Shared bits ---------- */
+
+.semble-muted,
+.semble-message {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.semble-message {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-4) var(--size-4-2);
+	text-align: center;
+}
+
+.semble-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.semble-badge {
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smallest);
+	font-weight: var(--font-semibold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.semble-badge.mod-success {
+	background-color: rgba(var(--color-green-rgb), 0.15);
+	color: var(--color-green);
+}
+
+.semble-thumb {
+	flex-shrink: 0;
+	width: 64px;
+	height: 64px;
+	border-radius: var(--radius-m);
+	object-fit: cover;
+	background-color: var(--background-modifier-hover);
+}
+
+.semble-icon-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-1) var(--size-4-2);
+}
+
+.semble-icon-button.mod-warning {
+	color: var(--text-error);
+}
+
+/* Tabs */
+
+.semble-tabs {
+	display: flex;
+	border-bottom: 2px solid var(--background-modifier-border);
+	margin-bottom: var(--size-4-3);
+}
+
+.semble-tab,
+.semble-tab:hover {
+	flex: 1;
+	margin-bottom: -2px;
+	padding: var(--size-4-2) 0;
+	border: none;
+	border-bottom: 2px solid transparent;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium);
+	cursor: pointer;
+}
+
+.semble-tab:hover {
+	color: var(--text-normal);
+}
+
+.semble-tab.is-active {
+	border-bottom-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+/* Filter chips */
+
+.semble-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-3);
+	margin: var(--size-4-2) 0;
+}
+
+.semble-chips.mod-scroll {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.semble-chip,
+.semble-chip:hover {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: var(--size-2-2);
+	height: auto;
+	padding: var(--size-2-2) var(--size-4-3);
+	border-radius: var(--radius-xl);
+	box-shadow: none;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.semble-chip {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+.semble-chip.is-active {
+	background-color: hsla(var(--interactive-accent-hsl), 0.15);
+	color: var(--text-accent);
+}
+
+.semble-chip-icon {
+	display: flex;
+	--icon-size: var(--icon-xs);
+}
+
+/* URL cards (related links, connections) */
+
+.semble-card-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.semble-card {
+	display: flex;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	background-color: var(--background-primary);
+}
+
+.semble-card.is-clickable {
+	cursor: pointer;
+}
+
+.semble-card.is-clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.semble-card .semble-thumb {
+	width: 48px;
+	height: 48px;
+}
+
+.semble-card-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.semble-card-site {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+	color: var(--text-accent);
+	font-size: var(--font-ui-small);
+}
+
+.semble-card-site > span:first-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semble-card-title {
+	font-weight: var(--font-medium);
+	overflow-wrap: anywhere;
+}
+
+.semble-card-desc {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.semble-load-more {
+	align-self: center;
+}
+
+/* Inputs and footers */
+
+.semble-search {
+	margin-bottom: var(--size-2-2);
+}
+
+.semble-search .search-input-container {
+	width: 100%;
+}
+
+.semble-input {
+	width: 100%;
+}
+
+.semble-note textarea {
+	width: 100%;
+	min-height: 4.5em;
+	resize: vertical;
+}
+
+.semble-footer {
+	position: sticky;
+	bottom: 0;
+	display: flex;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-3);
+	padding: var(--size-4-2) 0;
+	background-color: var(--background-secondary);
+}
+
+.semble-footer .semble-primary {
+	flex: 1;
+}
+
+/* ---------- Add / update tab ---------- */
+
+.semble-collection-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	max-height: 280px;
+	overflow-y: auto;
+	padding: var(--size-2-1);
+	margin-bottom: var(--size-4-3);
+}
+
+.semble-collection {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	cursor: pointer;
+}
+
+.semble-collection:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.semble-collection.is-selected {
+	border-color: var(--interactive-accent);
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+.semble-collection.is-disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.semble-collection-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.semble-collection-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semble-collection-meta {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.semble-check {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	border: 1px solid var(--background-modifier-border-hover);
+	border-radius: 50%;
+	--icon-size: var(--icon-xs);
+}
+
+.semble-collection.is-selected .semble-check {
+	border-color: var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.semble-collection.mod-create {
+	border-style: dashed;
+	color: var(--text-accent);
+}
+
+/* ---------- Connections tab ---------- */
+
+.semble-connection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+}
+
+.semble-connection + .semble-connection {
+	padding-top: var(--size-4-2);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.semble-connection-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+}
+
+.semble-connection-type {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-1) var(--size-4-2);
+	border-radius: var(--radius-xl);
+	background-color: rgba(var(--color-green-rgb), 0.15);
+	color: var(--color-green);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	--icon-size: var(--icon-xs);
+}
+
+.semble-connection-type > span:first-child {
+	display: flex;
+}
+
+.semble-connection-note {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	white-space: pre-wrap;
+}
+
+.semble-connection-stack {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	margin-bottom: var(--size-4-3);
+}
+
+.semble-connection-middle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) 0;
+}
+
+.semble-connection-arrow {
+	display: flex;
+	flex-basis: 100%;
+	justify-content: center;
+	color: var(--text-faint);
+	--icon-size: var(--icon-s);
+}
+
+.semble-connection-target {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+.semble-suggestion-url {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }

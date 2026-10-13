@@ -12,5 +12,9 @@ export default defineConfig([
 				tsconfigRootDir: import.meta.dirname,
 			},
 		},
+		rules: {
+			// "Semble" is a product name, not a word to lowercase.
+			"obsidianmd/ui/sentence-case": ["warn", { ignoreWords: ["Semble"] }],
+		},
 	},
 ]);

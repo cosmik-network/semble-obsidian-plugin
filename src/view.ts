@@ -10,15 +10,19 @@ import {
 	TFile,
 	type WorkspaceLeaf,
 } from "obsidian";
+import { LinkDetail } from "./detail/LinkDetail";
 import { collapseDuplicates, extractLinks, type CollapsedLink, type WebLink } from "./links";
 import type SemblePlugin from "./main";
+import { hostOf, openUrl } from "./ui";
 
 export const VIEW_TYPE_LINKS = "semble-links";
 
 /**
  * Sidebar pane listing every web link in the active note, modelled on the
- * core Outline view. It follows the most recently opened file (not the
- * focused leaf), so clicking into the pane keeps showing the note you came from.
+ * core Outline view. Clicking a link opens a detail sub-view backed by Semble.
+ *
+ * The pane follows the most recently opened file (not the focused leaf), so
+ * clicking into the pane keeps showing the note you came from.
  */
 export class LinksView extends ItemView {
 	private file: TFile | null = null;
@@ -27,7 +31,10 @@ export class LinksView extends ItemView {
 	/** Incremented per refresh so a slow read can't overwrite a newer result. */
 	private refreshId = 0;
 
+	private listViewEl!: HTMLElement;
 	private listEl!: HTMLElement;
+	private detailEl!: HTMLElement;
+	private detail: LinkDetail | null = null;
 
 	private readonly requestRefresh = debounce(() => void this.refresh(), 250, true);
 
@@ -54,12 +61,17 @@ export class LinksView extends ItemView {
 		this.contentEl.empty();
 		this.contentEl.addClass("semble-links-view");
 
-		const searchEl = this.contentEl.createDiv({ cls: "semble-links-search" });
+		// The list stays in the DOM (just hidden) while a link is open, so its
+		// filter and scroll position survive going back.
+		this.listViewEl = this.contentEl.createDiv({ cls: "semble-links-list-view" });
+		const searchEl = this.listViewEl.createDiv({ cls: "semble-links-search" });
 		new SearchComponent(searchEl).setPlaceholder("Filter links...").onChange((value) => {
 			this.filter = value.trim().toLowerCase();
 			this.render();
 		});
-		this.listEl = this.contentEl.createDiv({ cls: "semble-links-list" });
+		this.listEl = this.listViewEl.createDiv({ cls: "semble-links-list" });
+		this.detailEl = this.contentEl.createDiv({ cls: "semble-detail-container" });
+		this.detailEl.hide();
 
 		const { workspace, metadataCache, vault } = this.app;
 		this.registerEvent(workspace.on("file-open", (file) => this.setFile(file)));
@@ -81,10 +93,17 @@ export class LinksView extends ItemView {
 		this.requestRefresh.cancel();
 	}
 
+	onSettingsChanged(): void {
+		this.render();
+		// Rebuild an open detail view, e.g. so a newly added API key takes effect.
+		if (this.detail) this.openDetail(this.detail.link);
+	}
+
 	private setFile(file: TFile | null): void {
 		if (file === this.file) return;
 		this.file = file;
 		this.links = [];
+		this.closeDetail();
 		void this.refresh();
 	}
 
@@ -103,6 +122,31 @@ export class LinksView extends ItemView {
 		this.links = extractLinks(content, this.app.metadataCache.getFileCache(file));
 		this.render();
 	}
+
+	// --- Detail sub-view ---
+
+	private openDetail(link: WebLink): void {
+		this.closeDetail();
+		this.listViewEl.hide();
+		this.detailEl.show();
+		this.detail = this.addChild(
+			new LinkDetail(this.detailEl, this.plugin, link, {
+				back: () => this.closeDetail(),
+				revealInNote: (target) => void this.revealInNote(target),
+				noteLinks: () => this.links,
+			}),
+		);
+	}
+
+	private closeDetail(): void {
+		if (!this.detail) return;
+		this.removeChild(this.detail);
+		this.detail = null;
+		this.detailEl.hide();
+		this.listViewEl.show();
+	}
+
+	// --- List ---
 
 	/** Redraw from the last extracted links using the current settings and filter. */
 	render(): void {
@@ -149,14 +193,15 @@ export class LinksView extends ItemView {
 		}
 
 		selfEl.addEventListener("click", (evt) => {
-			if (Keymap.isModEvent(evt) || this.plugin.settings.clickAction === "open") openUrl(link.url);
-			else void this.revealInNote(link);
+			if (Keymap.isModEvent(evt)) openUrl(link.url);
+			else this.openDetail(link);
 		});
 		selfEl.addEventListener("contextmenu", (evt) => this.showMenu(link, evt));
 	}
 
 	private showMenu(link: WebLink, evt: MouseEvent): void {
 		const menu = new Menu();
+		menu.addItem((item) => item.setTitle("Show in Semble").setIcon("info").onClick(() => this.openDetail(link)));
 		menu.addItem((item) => item.setTitle("Open link").setIcon("external-link").onClick(() => openUrl(link.url)));
 		menu.addItem((item) =>
 			item.setTitle("Jump to link in note").setIcon("text-cursor").onClick(() => this.revealInNote(link)),
@@ -203,19 +248,6 @@ export class LinksView extends ItemView {
 	}
 }
 
-/** Obsidian routes window.open for http(s) URLs to the system browser (or Web viewer, if enabled). */
-function openUrl(url: string): void {
-	window.open(url);
-}
-
 function matchesFilter(link: WebLink, filter: string): boolean {
 	return link.displayText.toLowerCase().includes(filter) || link.url.toLowerCase().includes(filter);
-}
-
-function hostOf(url: string): string | null {
-	try {
-		return new URL(url).host || null;
-	} catch {
-		return null;
-	}
 }
