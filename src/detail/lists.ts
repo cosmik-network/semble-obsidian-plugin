@@ -1,6 +1,6 @@
-import { DropdownComponent, moment } from "obsidian";
+import { moment } from "obsidian";
 import { URL_TYPES, type Collection, type LibraryEntry, type UrlType, type UrlView } from "../api";
-import { openUrl, plural, renderRow } from "../ui";
+import { openUrl, plural, renderRow, renderToggleGroup } from "../ui";
 import { hostOf, sembleCollectionUrl, sembleProfileUrl } from "../urls";
 import { PagedPanel } from "./context";
 
@@ -10,14 +10,18 @@ export class RelatedPanel extends PagedPanel<UrlView> {
 	private urlType: UrlType | "" = "";
 
 	protected renderControls(): void {
-		const types = Object.fromEntries(URL_TYPES.map((t) => [t, t.charAt(0).toUpperCase() + t.slice(1)]));
-		new DropdownComponent(this.containerEl.createDiv({ cls: "semble-controls" }))
-			.addOptions({ "": "All types", ...types })
-			.setValue(this.urlType)
-			.onChange((value) => {
-				this.urlType = value as UrlType | "";
+		const types = URL_TYPES.map((t) => ({ id: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
+		renderToggleGroup<UrlType | "">(
+			this.containerEl,
+			[{ id: "", label: "All" }, ...types],
+			this.urlType,
+			(id) => {
+				this.urlType = id;
 				void this.reset();
-			});
+			},
+			"semble-filters",
+		);
+		this.containerEl.addClass("semble-related");
 	}
 
 	protected async fetchPage(page: number) {
@@ -30,8 +34,8 @@ export class RelatedPanel extends PagedPanel<UrlView> {
 	}
 
 	protected renderItem(item: UrlView): void {
+		// Compact: title and site only. The full URL is in the tooltip.
 		renderRow(this.listEl, {
-			icon: "globe",
 			title: item.metadata.title || item.url,
 			detail: hostOf(item.url) ?? undefined,
 			flair: item.urlInLibrary ? "Saved" : undefined,
@@ -77,7 +81,6 @@ export class CollectionsPanel extends PagedPanel<Collection> {
 		const detail = [plural(collection.cardCount, "card"), `@${collection.author.handle}`];
 		if (collection.updatedAt) detail.push(`updated ${moment(collection.updatedAt).fromNow()}`);
 		renderRow(this.listEl, {
-			icon: "folder",
 			title: collection.name,
 			detail: detail.join(" · "),
 			tooltip: collection.description || undefined,

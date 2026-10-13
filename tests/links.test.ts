@@ -1,6 +1,6 @@
 import type { CachedMetadata } from "obsidian";
 import { describe, expect, it } from "vitest";
-import { collapseDuplicates, extractLinks, trimTrailingPunctuation } from "../src/links";
+import { extractLinks, trimTrailingPunctuation } from "../src/links";
 
 const urls = (content: string, cache: CachedMetadata | null = null) =>
 	extractLinks(content, cache).map((link) => link.url);
@@ -72,13 +72,5 @@ describe("helpers", () => {
 		expect(trimTrailingPunctuation("https://a.dev/x.")).toBe("https://a.dev/x");
 		expect(trimTrailingPunctuation("https://a.dev/x),")).toBe("https://a.dev/x");
 		expect(trimTrailingPunctuation("https://a.dev/Foo_(bar)")).toBe("https://a.dev/Foo_(bar)");
-	});
-
-	it("collapses duplicate URLs and counts them", () => {
-		const links = extractLinks("https://a.dev https://b.dev https://a.dev", null);
-		expect(collapseDuplicates(links).map((c) => [c.link.url, c.count])).toEqual([
-			["https://a.dev", 2],
-			["https://b.dev", 1],
-		]);
 	});
 });

@@ -39,6 +39,8 @@ export interface RowOptions {
 	note?: string;
 	/** Right-aligned count or label, like the counts in Outline and Backlinks. */
 	flair?: string;
+	/** Small rounded preview image on the right, like the extension's cards. */
+	thumbnailUrl?: string;
 	tooltip?: string;
 	onClick?: (evt: MouseEvent) => void;
 	onContextMenu?: (evt: MouseEvent) => void;
@@ -73,6 +75,7 @@ export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLEleme
 	if (options.detail) innerEl.createDiv({ cls: "semble-row-detail", text: options.detail });
 	if (options.note) innerEl.createDiv({ cls: "semble-row-note", text: options.note });
 
+	if (options.thumbnailUrl) renderThumbnail(selfEl, options.thumbnailUrl, "semble-row-thumb");
 	if (options.flair) {
 		selfEl.createDiv({ cls: "tree-item-flair-outer" }).createSpan({ cls: "tree-item-flair", text: options.flair });
 	}
@@ -89,11 +92,58 @@ export function renderRow(parentEl: HTMLElement, options: RowOptions): HTMLEleme
 	return itemEl;
 }
 
-/** A labelled form field; returns the element to put the control in. */
-export function renderField(parentEl: HTMLElement, label: string): HTMLElement {
-	const fieldEl = parentEl.createDiv({ cls: "semble-field" });
-	fieldEl.createDiv({ cls: "semble-field-label", text: label });
-	return fieldEl;
+export function renderThumbnail(parentEl: HTMLElement, src: string, cls: string): void {
+	const img = parentEl.createEl("img", { cls, attr: { src, alt: "", loading: "lazy", referrerpolicy: "no-referrer" } });
+	img.addEventListener("error", () => img.remove());
+}
+
+/**
+ * A row of toggle buttons built from core `clickable-icon` buttons, the same
+ * ones in Obsidian's pane toolbars, so hover and active states come from the
+ * theme. Used for the link view's tabs and for filters.
+ */
+export interface ToggleGroup<T extends string> {
+	el: HTMLElement;
+	/** Highlight a button without calling onChange; null clears the highlight. */
+	setActive(id: T | null): void;
+}
+
+export function renderToggleGroup<T extends string>(
+	parentEl: HTMLElement,
+	options: { id: T; label: string; icon?: string }[],
+	active: T | null,
+	onChange: (id: T) => void,
+	cls = "",
+): ToggleGroup<T> {
+	const groupEl = parentEl.createDiv({ cls: `semble-toggle-group ${cls}`.trim(), attr: { role: "tablist" } });
+	const buttons = new Map<T, HTMLElement>();
+	const setActive = (activeId: T | null) => {
+		for (const [id, el] of buttons) {
+			el.toggleClass("is-active", id === activeId);
+			el.setAttr("aria-selected", String(id === activeId));
+		}
+	};
+
+	for (const { id, label, icon } of options) {
+		const el = groupEl.createDiv({ cls: "clickable-icon semble-toggle", attr: { role: "tab", tabindex: "0" } });
+		if (icon) setIcon(el.createSpan({ cls: "semble-toggle-icon" }), icon);
+		el.createSpan({ text: label });
+		const select = () => {
+			if (el.hasClass("is-active")) return;
+			setActive(id);
+			onChange(id);
+		};
+		el.addEventListener("click", select);
+		el.addEventListener("keydown", (evt) => {
+			if (evt.key === "Enter" || evt.key === " ") {
+				evt.preventDefault();
+				select();
+			}
+		});
+		buttons.set(id, el);
+	}
+	setActive(active);
+	return { el: groupEl, setActive };
 }
 
 export class ConfirmModal extends Modal {

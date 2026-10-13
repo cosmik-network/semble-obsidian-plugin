@@ -9,10 +9,11 @@ import {
 	TFile,
 	type WorkspaceLeaf,
 } from "obsidian";
-import { LinkDetail, type SectionId } from "./detail/LinkDetail";
-import { collapseDuplicates, extractLinks, type CollapsedLink, type WebLink } from "./links";
+import { LinkDetail, type ViewId } from "./detail/LinkDetail";
+import { extractLinks, type WebLink } from "./links";
 import type SemblePlugin from "./main";
 import { openUrl, renderRow } from "./ui";
+import { SEMBLE_ICON } from "./icon";
 import { hostOf } from "./urls";
 
 export const VIEW_TYPE_LINKS = "semble-links";
@@ -35,8 +36,8 @@ export class LinksView extends ItemView {
 	private listEl!: HTMLElement;
 	private detailEl!: HTMLElement;
 	private detail: LinkDetail | null = null;
-	/** Sections open in the link view; kept so every link opens the same way. */
-	private readonly openSections = new Set<SectionId>(["library"]);
+	/** Reopen link views on the tab (or stat list) the user last chose. */
+	private detailView: ViewId = "library";
 
 	private readonly requestRefresh = debounce(() => void this.refresh(), 250, true);
 
@@ -56,7 +57,7 @@ export class LinksView extends ItemView {
 	}
 
 	getIcon(): string {
-		return "globe";
+		return SEMBLE_ICON;
 	}
 
 	async onOpen(): Promise<void> {
@@ -136,11 +137,8 @@ export class LinksView extends ItemView {
 				back: () => this.closeDetail(),
 				revealInNote: (target) => void this.revealInNote(target),
 				noteLinks: () => this.links,
-				openSections: this.openSections,
-				onSectionToggle: (id, open) => {
-					if (open) this.openSections.add(id);
-					else this.openSections.delete(id);
-				},
+				initialView: this.detailView,
+				onViewChange: (view) => (this.detailView = view),
 			}),
 		);
 	}
@@ -155,7 +153,7 @@ export class LinksView extends ItemView {
 
 	// --- List ---
 
-	/** Redraw from the last extracted links using the current settings and filter. */
+	/** Redraw from the last extracted links using the current filter. */
 	render(): void {
 		if (!this.listEl) return;
 		this.listEl.empty();
@@ -163,31 +161,22 @@ export class LinksView extends ItemView {
 		if (!this.file) return this.renderEmpty("No file is open.");
 		if (this.file.extension !== "md") return this.renderEmpty("Links are only listed for Markdown notes.");
 
-		const { settings } = this.plugin;
-		let links = this.links;
-		if (!settings.includeImages) links = links.filter((link) => !link.image);
-		if (this.filter) links = links.filter((link) => matchesFilter(link, this.filter));
+		const links = this.filter ? this.links.filter((link) => matchesFilter(link, this.filter)) : this.links;
 		if (links.length === 0) {
 			return this.renderEmpty(this.filter ? "No links match the filter." : "No web links in this note.");
 		}
-
-		const items = settings.collapseDuplicates
-			? collapseDuplicates(links)
-			: links.map((link): CollapsedLink => ({ link, count: 1 }));
-		for (const item of items) this.renderItem(item);
+		for (const link of links) this.renderItem(link);
 	}
 
 	private renderEmpty(message: string): void {
 		this.listEl.createDiv({ cls: "pane-empty", text: message });
 	}
 
-	private renderItem({ link, count }: CollapsedLink): void {
+	private renderItem(link: WebLink): void {
 		const host = hostOf(link.url);
 		renderRow(this.listEl, {
-			icon: link.image ? "image" : "globe",
 			title: link.displayText,
 			detail: host && host !== link.displayText ? host : undefined,
-			flair: count > 1 ? String(count) : undefined,
 			tooltip: link.url,
 			onClick: (evt) => {
 				if (Keymap.isModEvent(evt)) openUrl(link.url);

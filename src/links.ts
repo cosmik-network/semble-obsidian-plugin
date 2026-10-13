@@ -160,19 +160,3 @@ function toLoc(offset: number, lineStarts: number[]): Loc {
 	}
 	return { line: lo, col: offset - (lineStarts[lo] ?? 0), offset };
 }
-
-export interface CollapsedLink {
-	link: WebLink;
-	count: number;
-}
-
-/** Merge links that point at the same URL, keeping the first occurrence. */
-export function collapseDuplicates(links: WebLink[]): CollapsedLink[] {
-	const byUrl = new Map<string, CollapsedLink>();
-	for (const link of links) {
-		const existing = byUrl.get(link.url);
-		if (existing) existing.count++;
-		else byUrl.set(link.url, { link, count: 1 });
-	}
-	return [...byUrl.values()];
-}

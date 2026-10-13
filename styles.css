@@ -1,9 +1,10 @@
 /*
- * Web links pane. Nearly everything is built from Obsidian's own markup:
- * `tree-item` rows (as in Outline and Backlinks), `nav-header` buttons,
- * collapsible `tree-item` sections, and native inputs and buttons. These
- * rules only cover layout gaps, using theme variables throughout so themes
- * and dark mode apply unchanged.
+ * Web links pane. The link view follows the layout of Semble's browser
+ * extension, but is built from Obsidian's own markup: `tree-item` rows (as in
+ * Outline and Backlinks), `nav-header` and `clickable-icon` buttons for the
+ * toolbar, tabs and filters, and native inputs and buttons. These
+ * rules only cover layout, using theme variables throughout so themes and
+ * dark mode apply unchanged.
  */
 
 .semble-links-view {
@@ -55,7 +56,17 @@
 }
 
 .semble-row .tree-item-inner {
+	flex: 1;
 	min-width: 0;
+}
+
+.semble-row-thumb {
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-s);
+	object-fit: cover;
+	background-color: var(--background-modifier-hover);
 }
 
 .semble-row-title,
@@ -70,10 +81,23 @@
 	font-size: var(--font-ui-smaller);
 }
 
+/* Related links: compact rows, with titles allowed two lines so they're readable */
+.semble-related .semble-row > .tree-item-self {
+	padding-block: var(--size-2-3);
+}
+
+.semble-related .semble-row-title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	white-space: normal;
+	line-height: var(--line-height-tight);
+}
+
 .semble-row-note {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
+	-webkit-line-clamp: 2;
 	overflow: hidden;
 	margin-top: var(--size-2-1);
 	color: var(--text-muted);
@@ -111,18 +135,45 @@
 .semble-detail-header {
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-2-1);
+	gap: var(--size-4-2);
 	padding: var(--size-4-2) var(--size-4-2) var(--size-4-3);
 }
 
-.semble-detail-title {
-	font-weight: var(--font-semibold);
-	overflow-wrap: anywhere;
+.semble-detail-top {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-3);
+}
+
+.semble-detail-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
 }
 
 .semble-detail-site {
-	color: var(--text-faint);
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
+}
+
+.semble-saved {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	color: var(--text-success);
+	--icon-size: var(--icon-xs);
+}
+
+.semble-detail-title {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	line-height: var(--line-height-tight);
+	overflow-wrap: anywhere;
 }
 
 .semble-detail-desc {
@@ -134,13 +185,94 @@
 	font-size: var(--font-ui-small);
 }
 
+.semble-detail-thumb {
+	flex-shrink: 0;
+	width: 56px;
+	height: 56px;
+	border-radius: var(--radius-m);
+	object-fit: cover;
+	background-color: var(--background-modifier-hover);
+}
+
 .semble-detail-error {
 	color: var(--text-error);
 	font-size: var(--font-ui-small);
 }
 
-.semble-section-body {
-	padding: var(--size-2-2) 0 var(--size-4-3) var(--size-4-4);
+.semble-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2) var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.semble-stat strong {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.semble-stat.is-clickable {
+	cursor: var(--cursor);
+}
+
+.semble-stat.is-clickable:hover {
+	color: var(--text-normal);
+	text-decoration: underline;
+}
+
+/* A stat whose list is showing, highlighted like an active tab */
+.semble-stat.is-active,
+.semble-stat.is-active strong {
+	color: var(--text-accent);
+}
+
+.semble-view-title {
+	margin-bottom: var(--size-2-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+}
+
+/* Tabs and filters: rows of core clickable-icon buttons */
+
+.semble-toggle-group {
+	display: flex;
+	gap: var(--size-2-2);
+}
+
+.semble-toggle {
+	gap: var(--size-2-2);
+	white-space: nowrap;
+}
+
+.semble-toggle-icon {
+	display: flex;
+}
+
+.semble-tabs {
+	padding-bottom: var(--size-4-2);
+	margin: 0 var(--size-4-1) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.semble-tabs .semble-toggle {
+	flex: 1;
+	justify-content: center;
+}
+
+.semble-filters {
+	overflow-x: auto;
+	margin-bottom: var(--size-4-2);
+	scrollbar-width: none;
+}
+
+.semble-filters .semble-toggle {
+	font-size: var(--font-ui-small);
+}
+
+.semble-tab-body {
+	padding: 0 var(--size-4-1);
 }
 
 /* Forms: filters, the collection picker, notes and the connection form */
@@ -169,11 +301,6 @@
 	margin-bottom: var(--size-4-2);
 }
 
-.semble-field-label {
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-}
-
 .semble-field-hint {
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
@@ -198,6 +325,40 @@
 
 .semble-buttons .mod-warning {
 	margin-inline-end: auto;
+}
+
+/* Add-connection form: this link, type and swap, other link */
+
+.semble-connection-stack {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: var(--size-4-3);
+}
+
+.semble-connection-end {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.semble-connection-end input[type="text"] {
+	width: 100%;
+}
+
+.semble-connection-middle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) 0;
+}
+
+.semble-connection-arrow {
+	display: flex;
+	color: var(--text-faint);
 }
 
 .semble-suggestion-url {

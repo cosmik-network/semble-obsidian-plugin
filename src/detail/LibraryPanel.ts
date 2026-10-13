@@ -1,15 +1,15 @@
-import { ButtonComponent, debounce, DropdownComponent, Notice, SearchComponent, TextAreaComponent } from "obsidian";
+import { ButtonComponent, debounce, Notice, SearchComponent, TextAreaComponent } from "obsidian";
 import type { Collection, UrlCard } from "../api";
-import { ConfirmModal, errorText, renderMessage, renderRow } from "../ui";
+import { ConfirmModal, errorText, renderMessage, renderRow, renderToggleGroup } from "../ui";
 import { Panel } from "./context";
 
 type Source = "mine" | "recommended" | "open";
 
-const SOURCES: Record<Source, string> = {
-	mine: "My collections",
-	recommended: "Recommended",
-	open: "Open collections",
-};
+const SOURCES: { id: Source; label: string }[] = [
+	{ id: "mine", label: "My collections" },
+	{ id: "recommended", label: "Recommended" },
+	{ id: "open", label: "Open" },
+];
 
 /** Library section: pick collections, write a note, and save the link to Semble. */
 export class LibraryPanel extends Panel {
@@ -67,18 +67,22 @@ export class LibraryPanel extends Panel {
 	private render(): void {
 		const { containerEl } = this;
 
-		const controlsEl = containerEl.createDiv({ cls: "semble-controls" });
-		new SearchComponent(controlsEl).setPlaceholder("Find or create a collection...").onChange((value) => {
-			this.query = value.trim();
-			this.searchLater();
-		});
-		new DropdownComponent(controlsEl)
-			.addOptions(SOURCES)
-			.setValue(this.source)
+		new SearchComponent(containerEl.createDiv({ cls: "semble-controls" }))
+			.setPlaceholder("Search or create a collection...")
 			.onChange((value) => {
-				this.source = value as Source;
-				void this.loadCollections();
+				this.query = value.trim();
+				this.searchLater();
 			});
+		renderToggleGroup(
+			containerEl,
+			SOURCES,
+			this.source,
+			(id) => {
+				this.source = id;
+				void this.loadCollections();
+			},
+			"semble-filters",
+		);
 
 		this.listEl = containerEl.createDiv({ cls: "semble-collection-list" });
 
@@ -99,7 +103,7 @@ export class LibraryPanel extends Panel {
 				.buttonEl.addClass("mod-warning");
 		}
 		this.saveButton = new ButtonComponent(buttonsEl)
-			.setButtonText(this.card ? "Save changes" : "Save to library")
+			.setButtonText(this.card ? "Update" : "Add to library")
 			.setCta()
 			.onClick(() => void this.save());
 		this.updateButtons();

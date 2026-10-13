@@ -1,5 +1,6 @@
 import { Notice, Plugin } from "obsidian";
 import { SembleClient } from "./api";
+import { registerIcons, SEMBLE_ICON } from "./icon";
 import { DEFAULT_SETTINGS, SembleSettingTab, type SembleSettings } from "./settings";
 import { LinksView, VIEW_TYPE_LINKS } from "./view";
 
@@ -9,10 +10,11 @@ export default class SemblePlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		registerIcons();
 
 		this.registerView(VIEW_TYPE_LINKS, (leaf) => new LinksView(leaf, this));
 
-		this.addRibbonIcon("globe", "Show web links in current note", () => this.activateView());
+		this.addRibbonIcon(SEMBLE_ICON, "Show web links in current note", () => this.activateView());
 		this.addCommand({
 			id: "show-web-links",
 			name: "Show web links in current note",
@@ -54,7 +56,9 @@ export default class SemblePlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<SembleSettings> | null) };
+		const data = (await this.loadData()) as Partial<SembleSettings> | null;
+		// Only keep known keys, so options removed in earlier versions drop out of data.json.
+		this.settings = { apiKeySecret: data?.apiKeySecret ?? DEFAULT_SETTINGS.apiKeySecret };
 	}
 
 	async saveSettings(): Promise<void> {

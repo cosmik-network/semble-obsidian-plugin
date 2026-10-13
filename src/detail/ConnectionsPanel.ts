@@ -5,11 +5,12 @@ import {
 	DropdownComponent,
 	Menu,
 	Notice,
+	setIcon,
 	TextAreaComponent,
 } from "obsidian";
 import { CONNECTION_TYPES, type Connection, type ConnectionType, type User } from "../api";
 import type { WebLink } from "../links";
-import { ConfirmModal, errorText, openUrl, renderField, renderMessage, renderRow } from "../ui";
+import { ConfirmModal, errorText, openUrl, renderMessage, renderRow } from "../ui";
 import { hostOf, isHttpUrl, sameUrl } from "../urls";
 import { Panel } from "./context";
 
@@ -78,6 +79,7 @@ export class ConnectionsPanel extends Panel {
 			title: other.metadata.title || other.url,
 			detail: `${connectionLabel(connection.type)} · ${hostOf(other.url) ?? other.url} · @${connection.curator.handle}`,
 			note: connection.note,
+			thumbnailUrl: other.metadata.imageUrl,
 			tooltip: other.url,
 			onClick: () => openUrl(other.url),
 			onContextMenu: (evt) => {
@@ -133,12 +135,34 @@ export class ConnectionsPanel extends Panel {
 		let outgoing = true;
 		let note = "";
 
-		const linkField = renderField(formEl, "Link");
-		const inputEl = linkField.createEl("input", {
+		// This link, the connection type, and the other link, stacked in direction
+		// order like the browser extension. The swap button flips the order.
+		const stackEl = formEl.createDiv({ cls: "semble-connection-stack" });
+
+		const thisEl = createDiv({ cls: "semble-connection-end" });
+		const metadata = ctx.info()?.metadata;
+		renderRow(thisEl, {
+			title: metadata?.title || ctx.link.displayText,
+			detail: hostOf(ctx.link.url) ?? ctx.link.url,
+			thumbnailUrl: metadata?.imageUrl,
+			flair: "This link",
+		});
+
+		const middleEl = createDiv({ cls: "semble-connection-middle" });
+		setIcon(middleEl.createDiv({ cls: "semble-connection-arrow" }), "arrow-down");
+		new DropdownComponent(middleEl)
+			.addOptions(Object.fromEntries(CONNECTION_TYPES.map((t) => [t, CONNECTION_LABELS[t]])))
+			.setValue(type)
+			.onChange((value) => (type = value as ConnectionType));
+		const swapEl = middleEl.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Swap direction" } });
+		setIcon(swapEl, "arrow-up-down");
+
+		const targetEl = createDiv({ cls: "semble-connection-end" });
+		const inputEl = targetEl.createEl("input", {
 			attr: { type: "text", placeholder: "Pick a link from this note or paste a URL", spellcheck: "false" },
 		});
 		if (ctx.otherNoteLinks().length === 0) {
-			linkField.createDiv({ cls: "semble-field-hint", text: "This note has no other web links." });
+			targetEl.createDiv({ cls: "semble-field-hint", text: "This note has no other web links." });
 		}
 		const suggest = new NoteLinkSuggest(ctx.app, inputEl, () => ctx.otherNoteLinks());
 		suggest.onSelect((link) => {
@@ -150,18 +174,15 @@ export class ConnectionsPanel extends Panel {
 		inputEl.addEventListener("focus", () => inputEl.dispatchEvent(new Event("input")));
 		inputEl.addEventListener("input", () => validate());
 
-		new DropdownComponent(renderField(formEl, "Type"))
-			.addOptions(Object.fromEntries(CONNECTION_TYPES.map((t) => [t, CONNECTION_LABELS[t]])))
-			.setValue(type)
-			.onChange((value) => (type = value as ConnectionType));
+		const order = () => stackEl.append(...(outgoing ? [thisEl, middleEl, targetEl] : [targetEl, middleEl, thisEl]));
+		swapEl.addEventListener("click", () => {
+			outgoing = !outgoing;
+			order();
+		});
+		order();
 
-		new DropdownComponent(renderField(formEl, "Direction"))
-			.addOptions({ out: "From this link to the other", in: "From the other link to this one" })
-			.setValue("out")
-			.onChange((value) => (outgoing = value === "out"));
-
-		new TextAreaComponent(renderField(formEl, "Note"))
-			.setPlaceholder("Optional: how are these related?")
+		new TextAreaComponent(formEl.createDiv({ cls: "semble-field" }))
+			.setPlaceholder("Describe how these are related...")
 			.onChange((value) => (note = value));
 
 		const buttonsEl = formEl.createDiv({ cls: "semble-buttons" });

@@ -2,45 +2,62 @@ import { Component, setIcon } from "obsidian";
 import { API_KEYS_URL, COLLECTION_LISTS, type UrlInfo } from "../api";
 import type { WebLink } from "../links";
 import type SemblePlugin from "../main";
-import { errorText, openUrl } from "../ui";
+import { errorText, openUrl, plural, renderThumbnail, renderToggleGroup, type ToggleGroup } from "../ui";
 import { hostOf, sameUrl } from "../urls";
 import { ConnectionsPanel } from "./ConnectionsPanel";
 import type { DetailContext, Panel } from "./context";
 import { LibraryPanel } from "./LibraryPanel";
 import { CollectionsPanel, RelatedPanel, SavedByPanel } from "./lists";
-import { Section } from "./Section";
 
-export type SectionId = "library" | "connections" | "related" | "savedBy" | "collections";
+type PanelClass = new (el: HTMLElement, ctx: DetailContext) => Panel;
+
+/** Tabs in the tab bar. */
+type TabId = "library" | "connections" | "related";
+/** Lists opened from the stats; they share the tab content area. */
+type StatViewId = "savedBy" | "collections";
+export type ViewId = TabId | StatViewId;
 
 export interface LinkDetailHost {
 	back(): void;
 	revealInNote(link: WebLink): void;
 	noteLinks(): WebLink[];
-	/** Which sections start open, and a callback to remember the user's choice. */
-	openSections: ReadonlySet<SectionId>;
-	onSectionToggle(id: SectionId, open: boolean): void;
+	/** The view to start on, and a callback to remember the user's choice. */
+	initialView: ViewId;
+	onViewChange(view: ViewId): void;
 }
 
-const SECTIONS: { id: SectionId; title: string; Panel: new (el: HTMLElement, ctx: DetailContext) => Panel }[] = [
-	{ id: "library", title: "Library", Panel: LibraryPanel },
-	{ id: "connections", title: "Connections", Panel: ConnectionsPanel },
-	{ id: "related", title: "Related", Panel: RelatedPanel },
-	{ id: "savedBy", title: "Saved by", Panel: SavedByPanel },
-	{ id: "collections", title: "In collections", Panel: CollectionsPanel },
+const TABS: { id: TabId; label: string; Panel: PanelClass }[] = [
+	{ id: "library", label: "Add", Panel: LibraryPanel },
+	{ id: "related", label: "Related", Panel: RelatedPanel },
+	{ id: "connections", label: "Connections", Panel: ConnectionsPanel },
 ];
 
+const STAT_VIEWS: Record<StatViewId, { title: string; Panel: PanelClass }> = {
+	savedBy: { title: "Saved by", Panel: SavedByPanel },
+	collections: { title: "In collections", Panel: CollectionsPanel },
+};
+
+function isTab(id: ViewId): id is TabId {
+	return TABS.some((tab) => tab.id === id);
+}
+
 /**
- * Sub-view for one link: a header with Semble's metadata, then collapsible
- * sections (like Backlinks) to save the link, manage its connections, and see
- * related links, who saved it, and which collections it's in.
+ * Sub-view for one link, laid out like Semble's browser extension (header,
+ * stats, tabs) but built from Obsidian's own toolbar buttons, rows, inputs
+ * and modals so it matches the rest of the app.
  */
 export class LinkDetail extends Component {
 	private info: UrlInfo | null = null;
 	private infoError: string | null = null;
+	private view: ViewId;
+	private panel: Panel | null = null;
+	private tabs: ToggleGroup<TabId> | null = null;
+	/** Stat elements that open a view, so the active one can be highlighted. */
+	private readonly statEls = new Map<ViewId, HTMLElement>();
 	private alive = false;
-	private readonly sections = new Map<SectionId, Section>();
 
 	private headerEl!: HTMLElement;
+	private bodyEl!: HTMLElement;
 	private readonly ctx: DetailContext;
 
 	constructor(
@@ -50,6 +67,7 @@ export class LinkDetail extends Component {
 		private readonly host: LinkDetailHost,
 	) {
 		super();
+		this.view = host.initialView;
 		this.ctx = {
 			app: plugin.app,
 			api: plugin.api,
@@ -72,17 +90,15 @@ export class LinkDetail extends Component {
 			return;
 		}
 
-		const sectionsEl = scrollEl.createDiv({ cls: "semble-sections" });
-		for (const { id, title, Panel } of SECTIONS) {
-			const section = new Section(sectionsEl, {
-				title,
-				open: this.host.openSections.has(id),
-				createPanel: (el) => new Panel(el, this.ctx),
-				onToggle: (open) => this.host.onSectionToggle(id, open),
-			});
-			this.sections.set(id, this.addChild(section));
-		}
-		void this.loadInfo();
+		this.tabs = renderToggleGroup(
+			scrollEl,
+			TABS.map(({ id, label }) => ({ id, label })),
+			isTab(this.view) ? this.view : null,
+			(id) => this.showView(id),
+			"semble-tabs",
+		);
+		this.bodyEl = scrollEl.createDiv({ cls: "semble-tab-body" });
+		this.refresh();
 	}
 
 	onunload(): void {
@@ -92,7 +108,7 @@ export class LinkDetail extends Component {
 
 	private refresh(): void {
 		void this.loadInfo();
-		for (const section of this.sections.values()) section.reload();
+		this.showView(this.view, true);
 	}
 
 	/** Core nav-header markup, the same toolbar Outline and Backlinks use. */
@@ -129,29 +145,80 @@ export class LinkDetail extends Component {
 			this.infoError = errorText(err);
 		}
 		this.renderHeader();
-		this.updateCounts();
 	}
 
+	/** Site, title, description and thumbnail, then the stats, as in the extension. */
 	private renderHeader(): void {
 		const { headerEl, link, info } = this;
 		headerEl.empty();
 		const metadata = info?.metadata;
 
-		headerEl.createDiv({ cls: "semble-detail-title", text: metadata?.title || link.displayText });
-		const site = [metadata?.siteName, hostOf(link.url)].filter(Boolean);
-		headerEl.createDiv({ cls: "semble-detail-site", text: [...new Set(site)].join(" · ") || link.url });
-		if (metadata?.description) headerEl.createDiv({ cls: "semble-detail-desc", text: metadata.description });
+		const topEl = headerEl.createDiv({ cls: "semble-detail-top" });
+		const textEl = topEl.createDiv({ cls: "semble-detail-text" });
+		const siteEl = textEl.createDiv({ cls: "semble-detail-site" });
+		siteEl.createSpan({ text: hostOf(link.url) ?? link.url });
+		if (info?.urlInLibrary) {
+			const savedEl = siteEl.createSpan({ cls: "semble-saved", attr: { "aria-label": "In your library" } });
+			setIcon(savedEl, "bookmark-check");
+			savedEl.createSpan({ text: "Saved" });
+		}
+		textEl.createDiv({ cls: "semble-detail-title", text: metadata?.title || link.displayText });
+		if (metadata?.description) textEl.createDiv({ cls: "semble-detail-desc", text: metadata.description });
+		if (metadata?.imageUrl) renderThumbnail(topEl, metadata.imageUrl, "semble-detail-thumb");
+
 		if (this.infoError) headerEl.createDiv({ cls: "semble-detail-error", text: this.infoError });
+		if (!info?.stats) return;
+
+		// Each stat opens its list in the tab content area, like an extra tab.
+		const { stats } = info;
+		const statsEl = headerEl.createDiv({ cls: "semble-stats" });
+		this.statEls.clear();
+		const statItems: [number, string, ViewId][] = [
+			[stats.libraryCount, "save", "savedBy"],
+			[stats.collectionCount, "collection", "collections"],
+			[stats.connections.all.total, "connection", "connections"],
+		];
+		for (const [count, label, view] of statItems) {
+			const statEl = statsEl.createSpan({ cls: "semble-stat" });
+			statEl.createEl("strong", { text: String(count) });
+			statEl.appendText(` ${plural(count, label).split(" ").slice(1).join(" ")}`);
+			if (count === 0) continue;
+			statEl.addClass("is-clickable");
+			statEl.setAttrs({ role: "button", tabindex: "0" });
+			statEl.addEventListener("click", () => this.showView(view));
+			statEl.addEventListener("keydown", (evt) => {
+				if (evt.key === "Enter") this.showView(view);
+			});
+			this.statEls.set(view, statEl);
+		}
+		this.highlightStat();
 	}
 
-	/** Stats become counts next to the section titles, like Backlinks' mention counts. */
-	private updateCounts(): void {
-		const stats = this.info?.stats;
-		const count = (n: number | undefined) => (n ? String(n) : null);
-		this.sections.get("library")?.setFlair(this.info?.urlInLibrary ? "Saved" : null);
-		this.sections.get("connections")?.setFlair(count(stats?.connections.all.total));
-		this.sections.get("savedBy")?.setFlair(count(stats?.libraryCount));
-		this.sections.get("collections")?.setFlair(count(stats?.collectionCount));
+	private highlightStat(): void {
+		for (const [view, el] of this.statEls) el.toggleClass("is-active", view === this.view && !isTab(view));
+	}
+
+	/** Show a tab, or a stat's list, in the content area below the tab bar. */
+	private showView(id: ViewId, reload = false): void {
+		if (this.panel && id === this.view && !reload) return;
+		this.view = id;
+		this.host.onViewChange(id);
+		this.tabs?.setActive(isTab(id) ? id : null);
+		this.highlightStat();
+
+		if (this.panel) this.removeChild(this.panel);
+		this.bodyEl.empty();
+		let Panel: PanelClass;
+		let bodyEl = this.bodyEl;
+		if (isTab(id)) {
+			Panel = (TABS.find((t) => t.id === id) ?? TABS[0]!).Panel;
+		} else {
+			const statView = STAT_VIEWS[id];
+			Panel = statView.Panel;
+			this.bodyEl.createDiv({ cls: "semble-view-title", text: statView.title });
+			bodyEl = this.bodyEl.createDiv();
+		}
+		this.panel = this.addChild(new Panel(bodyEl, this.ctx));
 	}
 
 	private renderConnectPrompt(parentEl: HTMLElement): void {
