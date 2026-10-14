@@ -10,11 +10,7 @@ The plugin adds a pane to the sidebar that lists the web links in the note you'r
 
 ### Install
 
-Until the plugin is in Obsidian's community plugin directory, install it manually:
-
-1. Download `main.js`, `manifest.json` and `styles.css` from the latest [release](../../releases).
-2. Put them in a folder called `semble` inside your vault's `.obsidian/plugins/` folder.
-3. In Obsidian, open **Settings → Community plugins**, turn on community plugins if needed, and enable **Semble**.
+Install this plugin from Obsidian's community plugin list.
 
 ### Connect your Semble account
 

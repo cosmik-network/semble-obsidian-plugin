@@ -18,7 +18,7 @@ describe("SembleClient", () => {
 			expect.objectContaining({
 				method: "GET",
 				url: "https://api.semble.so/xrpc/network.cosmik.card.getUrlMetadata?url=https%3A%2F%2Fa.dev%2Fx%3Fy%3D1&includeStats=true",
-				headers: { "x-api-key": "key-123", "X-Semble-Client": "obsidian" },
+				headers: { "x-api-key": "key-123", "X-Semble-Client": "semble-obsidian-plugin" },
 				throw: false,
 			}),
 		);

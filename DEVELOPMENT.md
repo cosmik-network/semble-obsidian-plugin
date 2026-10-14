@@ -71,7 +71,7 @@ Links are listed in the order they appear in the note. Each link keeps its `Pos`
 
 **Opening links.** `openLink()` sends every web link to its Semble page, `https://semble.so/url?id=<encoded link>`. The only exception is Semble collection links (`semble.so/profile/<handle>/collections/<rkey>`), which open as they are. Profile and collection pages from the Saved by and In collections lists are opened directly with `openUrl()`. Collection pages use the `rkey` from the end of the collection's AT URI. Both use `window.open()`, which Obsidian sends to the system browser, or to the Web viewer core plugin if that's enabled.
 
-**Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: obsidian` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
+**Semble API.** `SembleClient` (`src/api.ts`) calls `https://api.semble.so/xrpc/<method>` with the key in the `x-api-key` header and `X-Semble-Client: semble-obsidian-plugin` to identify the integration. It reads the key on every request, so a key change takes effect immediately.
 
 **Caching.** GET responses are cached in memory and served _stale-while-revalidate_:
 

@@ -8,7 +8,7 @@ import { sameUrl } from "./urls";
 
 const BASE_URL = "https://api.semble.so/xrpc";
 /** Identifies this integration to Semble via the optional X-Semble-Client header. */
-const CLIENT_ID = "obsidian";
+const CLIENT_ID = "semble-obsidian-plugin";
 
 /** A cached response older than this is checked again in the background when next used. */
 const REVALIDATE_AFTER_MS = 10 * 1000;
